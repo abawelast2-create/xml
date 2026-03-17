@@ -66,6 +66,9 @@
             <a href="leaves.php" class="nav-item <?= ($activePage ?? '') === 'leaves' ? 'active' : '' ?>">
                 <span class="nav-icon"><?= svgIcon('absent', 18) ?></span> إدارة الإجازات
             </a>
+            <a href="documents-expiry.php" class="nav-item <?= ($activePage ?? '') === 'documents-expiry' ? 'active' : '' ?>">
+                <span class="nav-icon"><?= svgIcon('absent', 18) ?></span> وثائق المنتهية
+            </a>
             <a href="tampering.php" class="nav-item <?= ($activePage ?? '') === 'tampering' ? 'active' : '' ?>">
                 <span class="nav-icon"><?= svgIcon('lock', 18) ?></span> حالات التلاعب
             </a>

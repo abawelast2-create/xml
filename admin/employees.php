@@ -497,6 +497,8 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                             <div class="dropdown-wrap">
                                 <button class="btn btn-secondary btn-sm" onclick="toggleEmpMenu(this)" type="button">⚙️ ▾</button>
                                 <div class="dropdown-menu emp-actions-menu">
+                                    <!-- بروفايل -->
+                                    <a href="employee-profile.php?id=<?= (int)$emp['id'] ?>" class="dropdown-item">👤 بروفايل الموظف</a>
                                     <!-- تعديل -->
                                     <button type="button" class="dropdown-item" onclick='this.closest(".dropdown-menu").classList.remove("show");openEditModal(<?= json_encode($emp, JSON_UNESCAPED_UNICODE) ?>)'><?= svgIcon('settings', 14) ?> تعديل البيانات</button>
                                     <!-- تغيير PIN -->
