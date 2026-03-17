@@ -83,13 +83,22 @@ class AttendanceService
         if (!$emp) return 0;
 
         $schedule = getBranchSchedule($emp['branch_id'] ?? null);
-        $workStartStr = $schedule['work_start_time'];
-        $workStart = strtotime(date('Y-m-d') . ' ' . $workStartStr);
         $now = time();
+
+        // تحديد مرجع حساب التأخير: إذا توجد استراحة والوقت الحالي بعد نهاية الاستراحة
+        $referenceTimeStr = $schedule['work_start_time'];
+        if (!empty($schedule['break_start']) && !empty($schedule['break_end'])) {
+            $breakStart = strtotime(date('Y-m-d') . ' ' . $schedule['break_start']);
+            if ($now >= $breakStart) {
+                $referenceTimeStr = $schedule['break_end'];
+            }
+        }
+
+        $workStart = strtotime(date('Y-m-d') . ' ' . $referenceTimeStr);
 
         // عبور منتصف الليل
         if ($workStart > $now + 43200) {
-            $workStart = strtotime(date('Y-m-d', strtotime('-1 day')) . ' ' . $workStartStr);
+            $workStart = strtotime(date('Y-m-d', strtotime('-1 day')) . ' ' . $referenceTimeStr);
         }
 
         if ($now > $workStart) {

@@ -32,6 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $otAfter  = (int)($_POST['overtime_start_after'] ?? 60);
     $otMin    = (int)($_POST['overtime_min_duration'] ?? 30);
     $active   = (int)($_POST['is_active'] ?? 1);
+    $breakStart = sanitize($_POST['break_start'] ?? '');
+    $breakEnd   = sanitize($_POST['break_end'] ?? '');
 
     if (!$name) {
         header('Location: branch-edit.php?id=' . $branchId . '&msg=' . urlencode('اسم الفرع مطلوب') . '&t=error');
@@ -51,7 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = db()->prepare("UPDATE branches SET name=?, latitude=?, longitude=?, geofence_radius=?,
         work_start_time=?, work_end_time=?, check_in_start_time=?, check_in_end_time=?,
         check_out_start_time=?, check_out_end_time=?, checkout_show_before=?,
-        allow_overtime=?, overtime_start_after=?, overtime_min_duration=?, is_active=?
+        allow_overtime=?, overtime_start_after=?, overtime_min_duration=?, is_active=?,
+        break_start=?, break_end=?
         WHERE id=?");
 
     $stmt->execute([
@@ -70,6 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $otAfter,
         $otMin,
         $active,
+        $breakStart ?: null,
+        $breakEnd ?: null,
         $branchId
     ]);
 
@@ -310,6 +315,21 @@ L.Icon.Default.mergeOptions({
                     <div class="form-group">
                         <label class="form-label">نهاية الانصراف</label>
                         <input class="form-control" type="time" name="check_out_end_time" id="eCOE" value="<?= htmlspecialchars($branch['check_out_end_time']) ?>">
+                    </div>
+                </div>
+
+                <div class="form-section">فترة الاستراحة (اختياري)</div>
+                <div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.8rem;color:#92400E;line-height:1.6">
+                    عند تحديد فترة استراحة، سيُسمح للموظفين بتسجيل دخول ثانٍ بعد الاستراحة، ويُحسب التأخير من نهاية الاستراحة بدلاً من بداية الدوام.
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">بداية الاستراحة</label>
+                        <input class="form-control" type="time" name="break_start" value="<?= htmlspecialchars($branch['break_start'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">نهاية الاستراحة</label>
+                        <input class="form-control" type="time" name="break_end" value="<?= htmlspecialchars($branch['break_end'] ?? '') ?>">
                     </div>
                 </div>
 

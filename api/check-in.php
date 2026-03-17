@@ -55,16 +55,33 @@ $schedule       = getBranchSchedule($employee['branch_id'] ?? null);
 $ciStart        = $schedule['check_in_start_time'];
 $ciEnd          = $schedule['check_in_end_time'];
 $nowTime        = date('H:i');
-// Handle midnight crossing (e.g. ciEnd < ciStart)
+
+// التحقق من النافذة الأصلية
 if ($ciEnd < $ciStart) {
-    $outsideWindow = ($nowTime < $ciStart && $nowTime > $ciEnd);
+    $inPrimaryWindow = !($nowTime < $ciStart && $nowTime > $ciEnd);
 } else {
-    $outsideWindow = ($nowTime < $ciStart || $nowTime > $ciEnd);
+    $inPrimaryWindow = !($nowTime < $ciStart || $nowTime > $ciEnd);
 }
-if ($outsideWindow) {
+
+// نافذة ثانية للعودة من الاستراحة (break_end -30 دقيقة إلى break_end +60 دقيقة)
+$inBreakWindow = false;
+$breakMsg = '';
+if (!empty($schedule['break_start']) && !empty($schedule['break_end'])) {
+    $beTime   = strtotime($schedule['break_end']);
+    $bwStart  = date('H:i', $beTime - 1800); // 30 دقيقة قبل
+    $bwEnd    = date('H:i', $beTime + 3600); // 60 دقيقة بعد
+    if ($bwEnd < $bwStart) {
+        $inBreakWindow = !($nowTime < $bwStart && $nowTime > $bwEnd);
+    } else {
+        $inBreakWindow = !($nowTime < $bwStart || $nowTime > $bwEnd);
+    }
+    $breakMsg = " أو {$bwStart} - {$bwEnd} (بعد الاستراحة)";
+}
+
+if (!$inPrimaryWindow && !$inBreakWindow) {
     jsonResponse([
         'success' => false,
-        'message' => "وقت تسجيل الدخول المسموح به: {$ciStart} - {$ciEnd}. الوقت الحالي: {$nowTime}"
+        'message' => "وقت تسجيل الدخول المسموح به: {$ciStart} - {$ciEnd}{$breakMsg}. الوقت الحالي: {$nowTime}"
     ], 200);
 }
 

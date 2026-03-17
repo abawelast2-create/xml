@@ -243,6 +243,21 @@ try {
         }
     }
     
+    // =================== إضافة أعمدة الاستراحة للفروع ===================
+    $breakCols = [
+        'break_start' => 'TIME NULL DEFAULT NULL',
+        'break_end'   => 'TIME NULL DEFAULT NULL',
+    ];
+    foreach ($breakCols as $col => $def) {
+        try {
+            $pdo->query("SELECT `$col` FROM branches LIMIT 1");
+            $log[] = "⏭️ عمود branches.$col موجود";
+        } catch (Exception $e) {
+            $pdo->exec("ALTER TABLE branches ADD COLUMN `$col` $def");
+            $log[] = "✅ تم إضافة عمود branches.$col";
+        }
+    }
+
     echo "<ul>";
     foreach ($log as $l) {
         $color = str_contains($l, '✅') ? '#10B981' : (str_contains($l, '⚠️') ? '#F59E0B' : '#94A3B8');

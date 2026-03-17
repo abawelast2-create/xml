@@ -154,12 +154,27 @@ function recordAttendance(int $employeeId, string $type, float $lat, float $lon,
         $empStmt->execute([$employeeId]);
         $emp = $empStmt->fetch();
         $schedule = getBranchSchedule($emp['branch_id'] ?? null);
-        $workStartStr = $schedule['work_start_time'];
-        $workStart = strtotime(date('Y-m-d') . ' ' . $workStartStr);
         $now = time();
+
+        // تحديد مرجع حساب التأخير: إذا توجد استراحة والوقت الحالي بعد نهاية الاستراحة
+        // يُحسب التأخير من break_end بدلاً من work_start
+        $referenceTimeStr = $schedule['work_start_time'];
+        if (!empty($schedule['break_start']) && !empty($schedule['break_end'])) {
+            $breakEnd = strtotime(date('Y-m-d') . ' ' . $schedule['break_end']);
+            $breakStart = strtotime(date('Y-m-d') . ' ' . $schedule['break_start']);
+            // Handle midnight crossing for break_end
+            if ($breakEnd < $breakStart) {
+                $breakEnd = strtotime(date('Y-m-d', strtotime('+1 day')) . ' ' . $schedule['break_end']);
+            }
+            if ($now >= $breakStart) {
+                $referenceTimeStr = $schedule['break_end'];
+            }
+        }
+
+        $workStart = strtotime(date('Y-m-d') . ' ' . $referenceTimeStr);
         // Handle midnight crossing: if work starts late evening and we're after midnight
         if ($workStart > $now + 43200) { // 12 hours offset means midnight crossing
-            $workStart = strtotime(date('Y-m-d', strtotime('-1 day')) . ' ' . $workStartStr);
+            $workStart = strtotime(date('Y-m-d', strtotime('-1 day')) . ' ' . $referenceTimeStr);
         }
         if ($now > $workStart) {
             $lateMinutes = max(0, (int)round(($now - $workStart) / 60));
@@ -411,12 +426,19 @@ function getBranchSchedule(?int $branchId = null): array {
         'overtime_min_duration'=> (int)($defaults['overtime_min_duration'] ?? 30),
     ];
 
+    // ── Break defaults (null = no break) ──
+    $breakInfo = [
+        'break_start' => null,
+        'break_end'   => null,
+    ];
+
     // ── Branch overrides ──
     $branchFound = false;
     if ($branchId) {
         $stmt = db()->prepare("SELECT work_start_time, work_end_time, check_in_start_time, check_in_end_time,
             check_out_start_time, check_out_end_time, checkout_show_before,
-            allow_overtime, overtime_start_after, overtime_min_duration
+            allow_overtime, overtime_start_after, overtime_min_duration,
+            break_start, break_end
             FROM branches WHERE id = ? AND is_active = 1");
         $stmt->execute([$branchId]);
         $branch = $stmt->fetch();
@@ -432,12 +454,16 @@ function getBranchSchedule(?int $branchId = null): array {
             $common['allow_overtime']       = (bool)$branch['allow_overtime'];
             $common['overtime_start_after'] = (int)$branch['overtime_start_after'];
             $common['overtime_min_duration']= (int)$branch['overtime_min_duration'];
+            if (!empty($branch['break_start']) && !empty($branch['break_end'])) {
+                $breakInfo['break_start'] = $branch['break_start'];
+                $breakInfo['break_end']   = $branch['break_end'];
+            }
         }
     }
 
     // ── If branch has its own times, use them directly (no dual-shift detection) ──
     if ($branchFound) {
-        return array_merge($shift1, $common, [
+        return array_merge($shift1, $common, $breakInfo, [
             'current_shift' => 1,
             'shift1' => $shift1,
             'shift2' => $shift1, // branch times are the single source of truth

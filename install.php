@@ -99,6 +99,8 @@ try {
             allow_overtime        TINYINT(1) NOT NULL DEFAULT 1,
             overtime_start_after  INT NOT NULL DEFAULT 60,
             overtime_min_duration INT NOT NULL DEFAULT 30,
+            break_start          TIME NULL DEFAULT NULL,
+            break_end            TIME NULL DEFAULT NULL,
             is_active             TINYINT(1) NOT NULL DEFAULT 1,
             created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
