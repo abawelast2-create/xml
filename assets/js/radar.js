@@ -246,34 +246,22 @@ if (STATE.todayStatus === 'checked_in' && STATE.checkInTime) {
 }
 
 // ================================================================
-// COUNTDOWN
+// AUTO CHECKOUT — at check_out_start_time
 // ================================================================
-if (STATE.todayStatus === 'checked_in' && !STATE.showCheckout && STATE.coStart) {
+var autoCheckOutDone = false;
+if (STATE.todayStatus === 'checked_in' && STATE.coStart) {
   var _coP = STATE.coStart.split(':');
-  var _cob = STATE.coShowBefore || 0;
   (function tick(){
+    if (autoCheckOutDone) return;
     var now = new Date(), tgt = new Date();
-    tgt.setHours(+_coP[0], +_coP[1] - _cob, 0, 0);
-    // Handle midnight crossing
-    if (tgt < now && +_coP[0] < 6) {
-      tgt.setDate(tgt.getDate() + 1);
-    }
-    var diff = tgt - now;
-    if (diff <= 0) {
-      var bar = document.getElementById('countdownBar'); if (bar) bar.classList.remove('show');
-      var btn = document.getElementById('btnCheckOut');
-      if (btn && btn.classList.contains('btn-hidden')) {
-        btn.classList.remove('btn-hidden');
-        btn.classList.add('btn-entering');
-      }
+    tgt.setHours(+_coP[0], +_coP[1], 0, 0);
+    if (tgt < now && +_coP[0] < 6) tgt.setDate(tgt.getDate() + 1);
+    if (now >= tgt) {
+      autoCheckOutDone = true;
+      submitAttendance('out', false);
       return;
     }
-    var h = Math.floor(diff / 3600000);
-    var m = Math.floor((diff % 3600000) / 60000);
-    var s = Math.floor((diff % 60000) / 1000);
-    var el = document.getElementById('countdownValue');
-    if (el) el.textContent = (h ? h + T.time_h : '') + (m ? m + T.time_m : '') + (s + T.time_s);
-    setTimeout(tick, 1000);
+    setTimeout(tick, 5000);
   })();
 }
 

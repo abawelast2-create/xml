@@ -28,7 +28,6 @@ $schedule       = getBranchSchedule($branchId);
 $workStart      = $schedule['work_start_time'];
 $workEnd        = $schedule['work_end_time'];
 $coStart        = $schedule['check_out_start_time'];
-$coShowBefore   = $schedule['checkout_show_before'];
 $allowOvertime  = $schedule['allow_overtime'];
 $ciStart        = $schedule['check_in_start_time'];
 $ciEnd          = $schedule['check_in_end_time'];
@@ -70,15 +69,7 @@ if ($employee) {
   $historyRecords = $stmtH->fetchAll();
 }
 
-$now = new DateTime();
-$coTime = DateTime::createFromFormat('H:i:s', $coStart) ?: DateTime::createFromFormat('H:i', $coStart);
-if ($coTime) {
-  $coTime->modify("-{$coShowBefore} minutes");
-  // Handle midnight crossing: if coTime is late evening and employee checked in today
-  $showCheckoutButton = ($todayStatus === 'checked_in') && ($now >= $coTime);
-} else {
-  $showCheckoutButton = false;
-}
+$showCheckoutButton = ($todayStatus === 'checked_in');
 
 $jsConfig = json_encode([
   'token'          => $token,
@@ -88,7 +79,6 @@ $jsConfig = json_encode([
   'workLon'        => $workLon,
   'geofenceRadius' => $geofenceRadius,
   'coStart'        => $coStart,
-  'coShowBefore'   => $coShowBefore,
   'showCheckout'   => $showCheckoutButton,
   'allowOvertime'  => $allowOvertime,
   'ciStart'        => $ciStart,
@@ -188,11 +178,7 @@ $badgeClass = $todayStatus === 'checked_in' ? 'in' : ($todayStatus === 'checked_
 
       <!-- ACTION BUTTONS (inline after distance) -->
       <div class="bottom-panel">
-        <?php if ($todayStatus === 'checked_in' && !$showCheckoutButton): ?>
-          <div class="countdown-bar show" id="countdownBar">
-            <span data-i18n="checkout_countdown"></span> <strong id="countdownValue">...</strong>
-          </div>
-        <?php endif; ?>
+
 
         <div class="message" id="messageBox"></div>
 
@@ -202,7 +188,7 @@ $badgeClass = $todayStatus === 'checked_in' ? 'in' : ($todayStatus === 'checked_
             <span class="btn-icon">&#x2705;</span>
             <span data-i18n="btn_checkin"></span>
           </button>
-          <button class="btn btn-out <?= ($todayStatus !== 'checked_in' || !$showCheckoutButton) ? 'btn-hidden' : '' ?>"
+          <button class="btn btn-out <?= $todayStatus !== 'checked_in' ? 'btn-hidden' : '' ?>"
             id="btnCheckOut" onclick="submitAttendance('out', true)" disabled>
             <span class="btn-icon">&#x1F6AA;</span>
             <span data-i18n="btn_checkout"></span>
@@ -405,8 +391,7 @@ $badgeClass = $todayStatus === 'checked_in' ? 'in' : ($todayStatus === 'checked_
         todayStatus: '<?= $todayStatus ?>',
         checkInTime: '<?= $checkInTime ? date("Y-m-d\\TH:i:s", strtotime($checkInTime)) : "" ?>',
         showCheckout: <?= $showCheckoutButton ? 'true' : 'false' ?>,
-        coStart: '<?= $coStart ?>',
-        coShowBefore: <?= $coShowBefore ?>
+        coStart: '<?= $coStart ?>'
       };
       window.RADAR_URLS = {
         verifyDevice: '<?= SITE_URL ?>/api/verify-device.php',
