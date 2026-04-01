@@ -89,6 +89,13 @@ try {
             latitude              DECIMAL(10,8) NOT NULL DEFAULT 24.57230700,
             longitude             DECIMAL(11,8) NOT NULL DEFAULT 46.60255200,
             geofence_radius       INT NOT NULL DEFAULT 500,
+            work_start_time       TIME NOT NULL DEFAULT '08:00:00',
+            work_end_time         TIME NOT NULL DEFAULT '16:00:00',
+            check_in_start_time   TIME NOT NULL DEFAULT '07:00:00',
+            check_in_end_time     TIME NOT NULL DEFAULT '10:00:00',
+            check_out_start_time  TIME NOT NULL DEFAULT '15:00:00',
+            check_out_end_time    TIME NOT NULL DEFAULT '20:00:00',
+            checkout_show_before  INT NOT NULL DEFAULT 30,
             allow_overtime        TINYINT(1) NOT NULL DEFAULT 1,
             overtime_start_after  INT NOT NULL DEFAULT 60,
             overtime_min_duration INT NOT NULL DEFAULT 30,
@@ -97,22 +104,6 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
     $log[] = '✅ تم إنشاء جدول branches';
-
-    // =================== جدول الورديات ===================
-    $pdo->exec("
-        CREATE TABLE branch_shifts (
-            id                    INT AUTO_INCREMENT PRIMARY KEY,
-            branch_id             INT NOT NULL,
-            shift_number          TINYINT NOT NULL DEFAULT 1,
-            shift_start           TIME NOT NULL,
-            shift_end             TIME NOT NULL,
-            is_active             TINYINT(1) NOT NULL DEFAULT 1,
-            created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
-            UNIQUE KEY uq_branch_shift (branch_id, shift_number)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ");
-    $log[] = '✅ تم إنشاء جدول branch_shifts';
 
     // =================== جدول الموظفين ===================
     $pdo->exec("

@@ -115,20 +115,12 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     $allStmt = db()->prepare("SELECT a.*, e.name AS employee_name, e.job_title, b.name AS branch_name FROM attendances a JOIN employees e ON a.employee_id=e.id LEFT JOIN branches b ON e.branch_id=b.id WHERE $whereStr ORDER BY a.timestamp DESC");
     $allStmt->execute($params);
     $i = 1;
-    // دالة لمنع CSV Formula Injection (حماية من هجمات Excel)
-    $csvSafe = function($val) {
-        $val = (string)$val;
-        if ($val !== '' && in_array($val[0], ['=', '+', '-', '@', '|', '%'], true)) {
-            $val = "'" . $val; // إضافة apostrophe لمنع تفسير الخلية كمعادلة
-        }
-        return $val;
-    };
     while ($row = $allStmt->fetch()) {
         fputcsv($out, [
             $i++,
-            $csvSafe($row['employee_name']),
-            $csvSafe($row['job_title']),
-            $csvSafe($row['branch_name'] ?? '-'),
+            $row['employee_name'],
+            $row['job_title'],
+            $row['branch_name'] ?? '-',
             $row['type'] === 'in' ? 'دخول' : 'انصراف',
             date('Y-m-d', strtotime($row['timestamp'])),
             date('H:i:s', strtotime($row['timestamp'])),
@@ -266,7 +258,15 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 </div>
 
 <script>
+// =================== الساعة ===================
+function tick(){ const el=document.getElementById('topbarClock'); if(el) el.textContent=new Date().toLocaleString('ar-SA'); }
+tick(); setInterval(tick,1000);
 
+function toggleSidebar(){
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+document.getElementById('sidebarOverlay')?.addEventListener('click', toggleSidebar);
 
 // =================== التحديث بالوقت الفعلي (جزئي) ===================
 const REFRESH_INTERVAL = 20000;
@@ -445,8 +445,6 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 </script>
-
-<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>
 
 </div></div>
 </body></html>

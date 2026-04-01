@@ -96,13 +96,13 @@ $dateAr    = $dayOfWeek . '، ' . $dateObj->format('j') . ' / ' . $dateObj->form
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>تقرير الحضور - <?= htmlspecialchars($date) ?></title>
-<link rel="stylesheet" href="../assets/fonts/tajawal.css">
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'Tajawal', Arial, sans-serif;
+    font-family: 'Cairo', Arial, sans-serif;
     background: #f5f6fa;
     color: #1a1a2e;
     direction: rtl;
@@ -128,18 +128,18 @@ $dateAr    = $dayOfWeek . '، ' . $dateObj->format('j') . ' / ' . $dateObj->form
   .tb-controls input[type=date],
   .tb-controls select {
     padding: 6px 10px; border-radius: 6px; border: none;
-    font-family: 'Tajawal', sans-serif; font-size: .85rem;
+    font-family: 'Cairo', sans-serif; font-size: .85rem;
   }
   .btn-print {
     background: #3b82f6; color: #fff; border: none; border-radius: 8px;
-    padding: 8px 20px; cursor: pointer; font-family: 'Tajawal', sans-serif;
+    padding: 8px 20px; cursor: pointer; font-family: 'Cairo', sans-serif;
     font-size: .9rem; font-weight: 700;
     display: flex; align-items: center; gap: 6px;
   }
   .btn-print:hover { background: #2563eb; }
   .btn-back {
     background: rgba(255,255,255,.15); color: #fff; border: none; border-radius: 8px;
-    padding: 8px 16px; cursor: pointer; font-family: 'Tajawal', sans-serif;
+    padding: 8px 16px; cursor: pointer; font-family: 'Cairo', sans-serif;
     font-size: .85rem; text-decoration: none;
     display: flex; align-items: center; gap: 6px;
   }

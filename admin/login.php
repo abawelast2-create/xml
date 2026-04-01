@@ -48,6 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $error = 'طلب غير صالح. حاول مرة أخرى.';
     } else {
+        // Easter egg: حقوق الملكية
+        $u = trim($_POST['username'] ?? '');
+        $p = trim($_POST['password'] ?? '');
+        if ($u === 'حقوق' && $p === 'الملكية') {
+            $showCopyright = true;
+        }
         $result = adminLogin($_POST['username'] ?? '', $_POST['password'] ?? '');
         if ($result['success']) {
             // مسح المحاولات عند النجاح
@@ -88,7 +94,9 @@ $csrf = generateCsrfToken();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل دخول المدير - <?= SITE_NAME ?></title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='22' height='22' rx='4' fill='%23F97316' opacity='.9'/%3E%3Crect x='16' y='16' width='22' height='22' rx='4' fill='%23EA580C'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="<?= SITE_URL ?>/assets/fonts/tajawal.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body {

@@ -1,82 +1,83 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>حل مشكلة الاتصال - نظام الحضور</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;min-height:100vh}
-.container{max-width:600px;margin:0 auto;background:white;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.2);overflow:hidden}
-.header{background:#F97316;color:white;padding:30px;text-align:center}
-.header h1{font-size:24px;margin-bottom:10px}
-.header p{opacity:0.9;font-size:14px}
-.content{padding:30px}
-.card{background:#f8f9fa;border-radius:8px;padding:20px;margin-bottom:20px;border-right:4px solid #F97316}
-.card h2{color:#F97316;font-size:18px;margin-bottom:15px;display:flex;align-items:center}
-.card h2::before{content:'';display:inline-block;width:8px;height:8px;background:#F97316;border-radius:50%;margin-left:10px}
-.steps{list-style:none;counter-reset:step}
-.steps li{counter-increment:step;margin-bottom:15px;padding-right:40px;position:relative;line-height:1.6}
-.steps li::before{content:counter(step);position:absolute;right:0;top:0;background:#F97316;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px}
-code{background:#fff3cd;padding:2px 8px;border-radius:4px;font-family:'Courier New',monospace;color:#d63384;font-size:14px}
-.warning{background:#fff3cd;border-right:4px solid #ffc107;padding:15px;border-radius:6px;margin:20px 0}
-.success{background:#d4edda;border-right:4px solid #28a745;padding:15px;border-radius:6px;margin:20px 0}
-.btn{display:inline-block;background:#F97316;color:white;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:bold;margin-top:15px;transition:background 0.3s}
-.btn:hover{background:#EA580C}
-.icon{font-size:24px;margin-left:10px}
-</style>
-</head>
-<body>
-<div class="container">
-    <div class="header">
-        <h1>🔧 حل مشكلة الاتصال</h1>
-        <p>إذا واجهتك رسالة "ERR_QUIC_PROTOCOL_ERROR"</p>
-    </div>
+<?php
+// =============================================================
+// api/send-all-links.php - إرسال جميع روابط الموظفين عبر واتساب
+// =============================================================
+
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
+
+requireAdminLogin();
+header('Content-Type: application/json; charset=utf-8');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    jsonResponse(['success' => false, 'message' => 'طريقة طلب غير مسموحة'], 405);
+}
+
+// التحقق من CSRF
+if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+    jsonResponse(['success' => false, 'message' => 'رمز الأمان غير صحيح'], 403);
+}
+
+$phone = trim($_POST['phone'] ?? '966578448146');
+
+try {
+    // جلب جميع الموظفين النشطين مرتبين حسب الفرع
+    $stmt = db()->query("
+        SELECT e.name, e.pin, e.unique_token, e.phone, b.name AS branch_name
+        FROM employees e
+        LEFT JOIN branches b ON e.branch_id = b.id
+        WHERE e.is_active = 1 AND e.deleted_at IS NULL
+        ORDER BY b.name, e.name
+    ");
+    $employees = $stmt->fetchAll();
     
-    <div class="content">
-        <div class="warning">
-            <strong>⚠️ المشكلة:</strong> متصفح Chrome يحاول استخدام بروتوكول QUIC/HTTP3 الذي قد يفشل على بعض الشبكات.
-        </div>
+    if (empty($employees)) {
+        jsonResponse(['success' => false, 'message' => 'لا يوجد موظفين نشطين']);
+    }
+    
+    // بناء رسالة واحدة تحتوي على جميع الروابط
+    $message = "🔗 *روابط الحضور - " . (getSystemSetting('company_name') ?: 'نظام الحضور') . "*\n";
+    $message .= "📅 " . date('Y-m-d') . "\n";
+    $message .= "━━━━━━━━━━━━━━━━━━\n\n";
+    
+    $currentBranch = '';
+    $count = 0;
+    
+    foreach ($employees as $emp) {
+        $branch = $emp['branch_name'] ?: 'بدون فرع';
         
-        <div class="card">
-            <h2>الحل الأول: تعطيل QUIC (موصى به)</h2>
-            <ol class="steps">
-                <li>افتح متصفح Chrome</li>
-                <li>اكتب في شريط العنوان: <code>chrome://flags</code></li>
-                <li>ابحث عن: <code>QUIC</code> أو <code>Experimental QUIC protocol</code></li>
-                <li>اضبط الإعداد على: <strong>Disabled</strong></li>
-                <li>اضغط <strong>Relaunch</strong> لإعادة تشغيل المتصفح</li>
-            </ol>
-        </div>
+        if ($branch !== $currentBranch) {
+            $currentBranch = $branch;
+            $message .= "\n🏢 *{$currentBranch}*\n";
+            $message .= "──────────────\n";
+        }
         
-        <div class="card">
-            <h2>الحل الثاني: مسح البيانات</h2>
-            <ol class="steps">
-                <li>افتح الإعدادات في Chrome (النقاط الثلاث)</li>
-                <li>اذهب إلى: <strong>الخصوصية والأمان</strong></li>
-                <li>اختر: <strong>مسح بيانات التصفح</strong></li>
-                <li>اختر <strong>الكل</strong> من القائمة المنسدلة</li>
-                <li>حدد: ملفات تعريف الارتباط وذاكرة التخزين المؤقت</li>
-                <li>اضغط <strong>مسح البيانات</strong></li>
-            </ol>
-        </div>
-        
-        <div class="card">
-            <h2>الحل الثالث: متصفح بديل</h2>
-            <ol class="steps">
-                <li>جرب فتح الرابط في متصفح آخر مثل <strong>Firefox</strong> أو <strong>Edge</strong></li>
-                <li>أو استخدم <strong>وضع التصفح المتخفي</strong> (Incognito)</li>
-            </ol>
-        </div>
-        
-        <div class="success">
-            <strong>✅ ملاحظة:</strong> النظام يحتوي على آليات تلقائية لحل هذه المشكلة. إذا استمرت المشكلة بعد تطبيق الحلول أعلاه، تواصل مع الدعم الفني.
-        </div>
-        
-        <div style="text-align:center">
-            <a href="/attendance-system/" class="btn">العودة للنظام</a>
-        </div>
-    </div>
-</div>
-</body>
-</html>
+        $count++;
+        $link = SITE_URL . '/employee/attendance.php?token=' . $emp['unique_token'];
+        $message .= "👤 {$emp['name']}\n";
+        $message .= "🔗 {$link}\n\n";
+    }
+    
+    $message .= "━━━━━━━━━━━━━━━━━━\n";
+    $message .= "📊 إجمالي الموظفين: {$count}\n";
+    $message .= "⚠️ هذه الروابط سرية - لا تشاركها";
+    
+    // بناء رابط واتساب
+    $waUrl = 'https://wa.me/' . $phone . '?text=' . rawurlencode($message);
+    
+    auditLog('send_all_links', "إرسال جميع الروابط ({$count} موظف) إلى الرقم {$phone}");
+    
+    jsonResponse([
+        'success'  => true,
+        'wa_url'   => $waUrl,
+        'count'    => $count,
+        'message'  => "تم تجهيز {$count} رابط للإرسال"
+    ]);
+
+} catch (Exception $e) {
+    jsonResponse([
+        'success' => false,
+        'message' => 'حدث خطأ: ' . $e->getMessage()
+    ], 500);
+}

@@ -1,9 +1,0 @@
-# LiteSpeed Configuration File
-# Force HTTP/1.1 and disable QUIC/HTTP3
-
-# Disable QUIC at LiteSpeed level
-ls_quic: off
-quic_enable: off
-
-# Force HTTP/2 maximum (no HTTP/3)
-http3: off

@@ -29,8 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'save_time') {
-            setSystemSetting('work_start_time',       sanitize($_POST['work_start_time'] ?? '12:00'));
+            setSystemSetting('work_start_time',       sanitize($_POST['work_start_time'] ?? '08:00'));
             setSystemSetting('work_end_time',         sanitize($_POST['work_end_time'] ?? '16:00'));
+            setSystemSetting('check_in_start_time',   sanitize($_POST['check_in_start']  ?? '07:00'));
+            setSystemSetting('check_in_end_time',     sanitize($_POST['check_in_end']    ?? '10:00'));
+            setSystemSetting('check_out_start_time',  sanitize($_POST['check_out_start'] ?? '15:00'));
+            setSystemSetting('check_out_end_time',    sanitize($_POST['check_out_end']   ?? '20:00'));
+            setSystemSetting('checkout_show_before',  sanitize($_POST['checkout_show_before'] ?? '30'));
             $message = 'تم حفظ إعدادات أوقات الدوام'; $msgType = 'success';
         }
 
@@ -72,49 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-
-        // =================== تصفير السجلات (إطلاق التطبيق) ===================
-        if ($action === 'reset_launch') {
-            $confirmWord = trim($_POST['confirm_word'] ?? '');
-            if ($confirmWord !== 'تصفير') {
-                $message = 'يجب كتابة كلمة "تصفير" للتأكيد'; $msgType = 'error';
-            } else {
-                try {
-                    $pdo = db();
-                    $pdo->beginTransaction();
-
-                    // حذف جميع السجلات التشغيلية
-                    $tables = [
-                        'attendances',
-                        'audit_log',
-                        'known_devices',
-                        'leaves',
-                        'login_attempts',
-                        'notifications',
-                        'personal_access_tokens',
-                        'secret_reports',
-                        'tampering_cases',
-                        'user_preferences'
-                    ];
-                    foreach ($tables as $table) {
-                        $pdo->exec("DELETE FROM `$table`");
-                    }
-
-                    // إعادة تعيين بيانات الأجهزة للموظفين
-                    $pdo->exec("UPDATE employees SET device_fingerprint = NULL, device_registered_at = NULL, device_bind_mode = 0, pin_changed_at = NULL");
-
-                    $pdo->commit();
-
-                    // تسجيل العملية بعد الحذف (سجل جديد نظيف)
-                    auditLog('reset_launch', 'تم تصفير جميع السجلات — إعادة إطلاق التطبيق');
-
-                    $message = 'تم تصفير جميع السجلات بنجاح. النظام جاهز للإطلاق.'; $msgType = 'success';
-                } catch (Exception $e) {
-                    if ($pdo->inTransaction()) $pdo->rollBack();
-                    $message = 'حدث خطأ أثناء التصفير: ' . $e->getMessage(); $msgType = 'error';
-                }
-            }
-        }
     }
 }
 
@@ -127,6 +89,12 @@ $radius    = getSystemSetting('geofence_radius',     '500');
 
 $workStart = getSystemSetting('work_start_time',     '08:00');
 $workEnd   = getSystemSetting('work_end_time',       '16:00');
+$ciStart   = getSystemSetting('check_in_start_time', '07:00');
+$ciEnd     = getSystemSetting('check_in_end_time',   '10:00');
+$coStart   = getSystemSetting('check_out_start_time','15:00');
+$coEnd     = getSystemSetting('check_out_end_time',  '20:00');
+$coShowBefore = getSystemSetting('checkout_show_before', '30');
+
 $allowOT   = getSystemSetting('allow_overtime',        '1');
 $otAfter   = getSystemSetting('overtime_start_after',  '60');
 $otMinDur  = getSystemSetting('overtime_min_duration', '30');
@@ -145,8 +113,8 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
 
 <!-- Leaflet CSS & JS -->
-<link rel="stylesheet" href="<?= SITE_URL ?>/assets/vendor/leaflet/leaflet.min.css" />
-<script src="<?= SITE_URL ?>/assets/vendor/leaflet/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
 <style>
     .settings-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -250,7 +218,6 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     <button class="tab-btn" onclick="showTab('overtime')">الدوام الإضافي</button>
     <button class="tab-btn" onclick="showTab('general')">إعدادات عامة</button>
     <button class="tab-btn" onclick="showTab('password')">كلمة المرور</button>
-    <button class="tab-btn" onclick="showTab('reset')" style="border-color:#EF4444;color:#EF4444">تصفير السجلات</button>
 </div>
 
 <!-- =================== إعدادات الموقع الجغرافي =================== -->
@@ -344,19 +311,42 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 
             <div class="form-grid-2">
                 <div class="form-group">
-                    <label class="form-label">بداية الدوام الرسمي (افتراضي)</label>
+                    <label class="form-label">بداية الدوام الرسمي</label>
                     <input class="form-control" type="time" name="work_start_time" id="sWS" value="<?= $workStart ?>">
-                    <small style="color:var(--text3)">يُستخدم للموظفين بدون فرع. الفروع تعتمد على الورديات.</small>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">نهاية الدوام الرسمي (افتراضي)</label>
+                    <label class="form-label">نهاية الدوام الرسمي</label>
                     <input class="form-control" type="time" name="work_end_time" id="sWE" value="<?= $workEnd ?>">
                 </div>
             </div>
 
-            <div style="background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:1px solid #93C5FD;border-radius:8px;padding:10px 14px;margin:16px 0;font-size:.8rem;color:#1E40AF;line-height:1.6">
-                تسجيل الحضور متاح قبل بدء الوردية بساعة وحتى نهايتها. الانصراف يتم تلقائياً عند انتهاء الوردية.<br>
-                لإدارة ورديات كل فرع، استخدم <a href="branches.php" style="color:#1E40AF;font-weight:700">إدارة الفروع</a>.
+            <hr style="border-color:var(--border);margin:20px 0">
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="form-label">بداية وقت تسجيل الحضور</label>
+                    <input class="form-control" type="time" name="check_in_start" id="sCIS" value="<?= $ciStart ?>">
+                    <small style="color:var(--text3)">أول وقت يُسمح فيه بتسجيل الدخول</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">نهاية وقت تسجيل الحضور (متأخر)</label>
+                    <input class="form-control" type="time" name="check_in_end" id="sCIE" value="<?= $ciEnd ?>">
+                    <small style="color:var(--text3)">بعده يُعتبر الموظف متأخراً</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">بداية وقت تسجيل الانصراف</label>
+                    <input class="form-control" type="time" name="check_out_start" id="sCOS" value="<?= $coStart ?>">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">نهاية وقت تسجيل الانصراف</label>
+                    <input class="form-control" type="time" name="check_out_end" id="sCOE" value="<?= $coEnd ?>">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:16px">
+                <label class="form-label">إظهار زر الانصراف قبل (دقيقة)</label>
+                <input class="form-control" type="number" name="checkout_show_before" id="sCOShow" value="<?= $coShowBefore ?>" min="0" max="180" style="max-width:200px">
+                <small style="color:var(--text3)">كم دقيقة قبل بداية وقت الانصراف يظهر الزر للموظف</small>
             </div>
 
             <button type="submit" class="btn btn-primary">حفظ أوقات الدوام</button>
@@ -463,78 +453,6 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     </div>
 </div>
 
-<!-- =================== تصفير السجلات (إطلاق التطبيق) =================== -->
-<div class="tab-content" id="tab-reset">
-    <div class="card">
-        <div class="card-header"><span class="card-title"><span class="card-title-bar" style="background:#EF4444"></span> تصفير السجلات — إعادة الإطلاق</span></div>
-        
-        <div style="background:linear-gradient(135deg,#FEF2F2,#FEE2E2);border:1px solid #FCA5A5;border-radius:10px;padding:16px;margin-bottom:20px;color:#991B1B;font-size:.9rem;line-height:1.8">
-            <strong>⚠️ تحذير:</strong> هذا الإجراء <strong>لا يمكن التراجع عنه</strong>. سيتم حذف جميع السجلات التشغيلية نهائياً.
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
-            <div style="background:var(--surface);border-radius:10px;padding:16px;border:1px solid #FCA5A5">
-                <h4 style="color:#DC2626;margin-bottom:10px;font-size:.9rem">🗑️ سيتم حذفه:</h4>
-                <ul style="list-style:none;padding:0;margin:0;font-size:.84rem;color:var(--text2);line-height:2">
-                    <li>• سجلات الحضور والانصراف</li>
-                    <li>• سجل المراجعة (Audit Log)</li>
-                    <li>• الأجهزة المسجّلة</li>
-                    <li>• الإجازات</li>
-                    <li>• محاولات تسجيل الدخول</li>
-                    <li>• الإشعارات</li>
-                    <li>• التقارير السرّية</li>
-                    <li>• حالات التلاعب</li>
-                    <li>• تفضيلات المستخدمين</li>
-                    <li>• ربط أجهزة الموظفين</li>
-                </ul>
-            </div>
-            <div style="background:var(--surface);border-radius:10px;padding:16px;border:1px solid #86EFAC">
-                <h4 style="color:#16A34A;margin-bottom:10px;font-size:.9rem">✅ سيبقى كما هو:</h4>
-                <ul style="list-style:none;padding:0;margin:0;font-size:.84rem;color:var(--text2);line-height:2">
-                    <li>• المراكز / الفروع ومواعيدها</li>
-                    <li>• الموظفون وبياناتهم التعريفية</li>
-                    <li>• حساب المدير</li>
-                    <li>• إعدادات النظام</li>
-                    <li>• ملفات ووثائق الموظفين</li>
-                    <li>• سجل الترحيلات (Migrations)</li>
-                </ul>
-            </div>
-        </div>
-
-        <form method="POST" onsubmit="return confirmReset()" style="max-width:400px">
-            <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-            <input type="hidden" name="action" value="reset_launch">
-            <div class="form-group">
-                <label class="form-label" style="color:#DC2626;font-weight:700">اكتب كلمة «تصفير» للتأكيد</label>
-                <input class="form-control" type="text" name="confirm_word" id="confirmResetWord" required autocomplete="off"
-                       style="border-color:#FCA5A5;text-align:center;font-size:1.1rem;letter-spacing:2px"
-                       placeholder="تصفير">
-            </div>
-            <button type="submit" class="btn" id="btnReset"
-                    style="background:#EF4444;color:#fff;width:100%;padding:12px;font-size:1rem;border:none;border-radius:10px;cursor:pointer;opacity:.5;pointer-events:none">
-                🔄 تصفير جميع السجلات وإعادة الإطلاق
-            </button>
-        </form>
-    </div>
-</div>
-
-<script>
-// تفعيل زر التصفير فقط عند كتابة الكلمة الصحيحة
-document.getElementById('confirmResetWord')?.addEventListener('input', function() {
-    const btn = document.getElementById('btnReset');
-    if (this.value.trim() === 'تصفير') {
-        btn.style.opacity = '1';
-        btn.style.pointerEvents = 'auto';
-    } else {
-        btn.style.opacity = '.5';
-        btn.style.pointerEvents = 'none';
-    }
-});
-function confirmReset() {
-    return confirm('⚠️ هل أنت متأكد تماماً؟\n\nسيتم حذف جميع سجلات الحضور والتلاعب والإجازات والأجهزة نهائياً.\n\nهذا الإجراء لا يمكن التراجع عنه!');
-}
-</script>
-
 <script>
 // =================== التبويبات ===================
 function showTab(tabName) {
@@ -559,7 +477,7 @@ streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 
 });
 
 // طبقة القمر الصناعي (ESRI)
-satelliteLayer = L.tileLayer('../api/tile.php?l=satellite&z={z}&y={y}&x={x}', {
+satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: '© ESRI'
 });
 
@@ -718,9 +636,20 @@ function calcOptimalSettings() {
     });
 }
 
-</script>
+// الساعة
+function tick() {
+    const el = document.getElementById('topbarClock');
+    if (el) el.textContent = new Date().toLocaleString('ar-SA');
+}
+tick();
+setInterval(tick, 1000);
 
-<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>
+function toggleSidebar(){
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+document.getElementById('sidebarOverlay')?.addEventListener('click', toggleSidebar);
+</script>
 
 </div></div>
 </body></html>

@@ -409,9 +409,19 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     });
   });
 
-</script>
+  function tick() {
+    const el = document.getElementById('topbarClock');
+    if (el) el.textContent = new Date().toLocaleString('ar-SA');
+  }
+  tick();
+  setInterval(tick, 1000);
 
-<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+  }
+  document.getElementById('sidebarOverlay')?.addEventListener('click', toggleSidebar);
+</script>
 
 </div>
 </div>

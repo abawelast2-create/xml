@@ -9,15 +9,6 @@ require_once __DIR__ . '/../includes/functions.php';
 
 requireAdminLogin();
 
-// مسح تقارير الأخطاء (تعليم كمقروءة)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['clear_error_reports'])) {
-    if (verifyCsrfToken($_POST['csrf_token'] ?? '')) {
-        db()->exec("UPDATE notifications SET is_read = 1, read_at = NOW() WHERE type = 'error_report' AND is_read = 0");
-    }
-    header('Location: dashboard.php');
-    exit;
-}
-
 $pageTitle  = 'لوحة التحكم';
 $activePage = 'dashboard';
 
@@ -57,19 +48,6 @@ $absentStmt = db()->prepare("
 ");
 $absentStmt->execute([$today]);
 $absentList = $absentStmt->fetchAll();
-
-// تقارير الأخطاء السرية (آخر 10 غير مقروءة)
-$errorStmt = db()->query("
-    SELECT n.id, n.title, n.message, n.data_json, n.created_at, n.is_read,
-           e.name AS emp_name
-    FROM notifications n
-    LEFT JOIN employees e ON n.employee_id = e.id
-    WHERE n.type = 'error_report'
-    ORDER BY n.created_at DESC
-    LIMIT 10
-");
-$errorReports = $errorStmt->fetchAll();
-$unreadErrors = (int)db()->query("SELECT COUNT(*) FROM notifications WHERE type='error_report' AND is_read=0")->fetchColumn();
 
 require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
@@ -179,38 +157,6 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         </div>
     </div>
 </div>
-
-<?php if (!empty($errorReports)): ?>
-<div class="card" style="margin-top:20px;border-right:3px solid var(--red)">
-    <div class="card-header">
-        <span class="card-title"><span class="card-title-bar" style="background:var(--red)"></span> ⚠️ تقارير أخطاء الأجهزة</span>
-        <?php if ($unreadErrors > 0): ?>
-        <span class="badge badge-red"><?= $unreadErrors ?> جديد</span>
-        <?php endif; ?>
-    </div>
-    <div style="overflow-x:auto">
-    <table>
-        <thead><tr><th>الموظف</th><th>الخطأ</th><th>الوقت</th><th>التفاصيل</th></tr></thead>
-        <tbody>
-        <?php foreach ($errorReports as $er):
-            $data = json_decode($er['data_json'], true) ?: [];
-        ?>
-        <tr style="<?= !$er['is_read'] ? 'background:rgba(220,38,38,.05)' : '' ?>">
-            <td><?= htmlspecialchars($er['emp_name'] ?? 'غير محدد') ?></td>
-            <td style="font-size:.8rem"><?= htmlspecialchars(mb_substr($er['message'], 0, 80)) ?></td>
-            <td style="font-size:.78rem;color:var(--text3)"><?= date('m/d h:i A', strtotime($er['created_at'])) ?></td>
-            <td style="font-size:.72rem;color:var(--text3)"><?= htmlspecialchars($data['error_type'] ?? '') ?> — <?= htmlspecialchars(mb_substr($data['ip'] ?? '', 0, 15)) ?></td>
-        </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-    </div>
-    <form method="POST" style="padding:8px 16px">
-        <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
-        <button type="submit" name="clear_error_reports" value="1" class="btn btn-sm" style="background:var(--text3);color:#fff;font-size:.75rem;padding:4px 12px;border:none;border-radius:4px;cursor:pointer">تم الاطلاع ✓</button>
-    </form>
-</div>
-<?php endif; ?>
 
 <script>
     // =================== الساعة ===================
@@ -386,8 +332,6 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         }
     });
 </script>
-
-<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>
 
 </div></div><!-- end .content .main-content -->
 </body></html>

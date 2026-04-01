@@ -67,14 +67,34 @@ try {
     try {
         foreach ($employees as $emp) {
             try {
-                // جلب جدول الفرع (مع بيانات الورديتين)
+                // جلب جدول الفرع (مع الورديات)
                 $schedule = getBranchSchedule($emp['branch_id']);
-                $shift1 = $schedule['shift1'];
-                $shift2 = $schedule['shift2'];
+                $shifts   = $schedule['shifts'] ?? [];
 
-                // تحديد الوردية بناءً على وقت تسجيل الدخول
-                $empShift = detectShiftByCheckinTime($emp['checkin_time'], $shift1, $shift2);
-                $coEnd = $empShift === 2 ? $shift2['check_out_end_time'] : $shift1['check_out_end_time'];
+                // تحديد الوردية المناسبة بناءً على وقت تسجيل الدخول
+                $checkinMin = timeToMinutes(date('H:i', strtotime($emp['checkin_time'])));
+                $coEnd = $schedule['work_end_time']; // افتراضي: نهاية الوردية النشطة
+                $empShift = 1;
+
+                foreach ($shifts as $shift) {
+                    $shiftStart  = timeToMinutes($shift['shift_start']);
+                    $shiftEnd    = timeToMinutes($shift['shift_end']);
+                    $earlyWindow = ($shiftStart - 90 + 1440) % 1440; // 90 دقيقة قبل البداية
+
+                    if ($shiftEnd < $earlyWindow) { // يعبر منتصف الليل
+                        if ($checkinMin >= $earlyWindow || $checkinMin <= $shiftEnd) {
+                            $coEnd    = $shift['shift_end'];
+                            $empShift = (int)$shift['shift_number'];
+                            break;
+                        }
+                    } else {
+                        if ($checkinMin >= $earlyWindow && $checkinMin <= $shiftEnd) {
+                            $coEnd    = $shift['shift_end'];
+                            $empShift = (int)$shift['shift_number'];
+                            break;
+                        }
+                    }
+                }
 
             // بناء الوقت المتوقع للانصراف التلقائي
             $expectedCheckout = new DateTime($emp['attendance_date'] . ' ' . $coEnd);

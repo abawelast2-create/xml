@@ -7,7 +7,11 @@
 if (!headers_sent()) { header('Alt-Svc: clear'); }
 
 // ================== تحميل ملف .env (بدون Composer) ==================
-$_envFile = dirname(__DIR__) . '/.env';
+// البحث عن .env خارج public_html أولاً (آمن)، ثم في جذر المشروع كاحتياط
+$_envFile = dirname(dirname(__DIR__)) . '/.env';       // e.g. /home/user/.env  ← الموقع الآمن
+if (!file_exists($_envFile)) {
+    $_envFile = dirname(__DIR__) . '/.env';            // fallback: جذر المشروع (عدّل موقع الملف على السيرفر)
+}
 if (file_exists($_envFile)) {
     $_envLines = file($_envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($_envLines as $_line) {
@@ -82,7 +86,6 @@ if (!headers_sent()) {
     header('X-XSS-Protection: 1; mode=block');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Permissions-Policy: geolocation=(self), camera=(), microphone=(self)');
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'");
 }
 
 // ================== v4.0 Bootstrap (MVC + Services) ==================

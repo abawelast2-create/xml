@@ -1,0 +1,45 @@
+# ======================================
+# .gitignore - نظام الحضور والانصراف
+# ======================================
+
+# بيانات الاعتماد والإعدادات السرية
+.env
+.env.local
+*.env
+
+# ملف القفل (بعد التثبيت)
+install.lock
+
+# ملفات Rate Limiter المؤقتة
+/cache/
+/storage/
+
+# ملفات السجلات
+*.log
+error_log
+
+# ملفات النظام
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ملفات النسخ الاحتياطية
+*.bak
+*.old
+*.orig
+*.backup
+*.sql.gz
+
+# ملفات الاختبار والتطوير المحلي
+*.local.php
+debug_*.php
+
+# مجلد Composer (غير مستخدم لكن احترازاً)
+/vendor/
+composer.lock
+
+# ملفات Docker المحلية
+docker-compose.override.yml

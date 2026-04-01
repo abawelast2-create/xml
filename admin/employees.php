@@ -86,9 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'delete') {
             $id = (int)($_POST['emp_id'] ?? 0);
             if ($id) {
-                // إبطال التوكن عند الأرشفة لمنع استمرار الوصول
-                $newToken = bin2hex(random_bytes(32));
-                db()->prepare("UPDATE employees SET deleted_at=NOW(), is_active=0, unique_token=? WHERE id=?")->execute([$newToken, $id]);
+                db()->prepare("UPDATE employees SET deleted_at=NOW(), is_active=0 WHERE id=?")->execute([$id]);
                 auditLog('delete_employee', "أرشفة موظف ID={$id}", $id);
                 $message = "تم أرشفة الموظف (يمكن استعادته لاحقاً)";
                 $msgType = 'success';
@@ -102,6 +100,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 db()->prepare("UPDATE employees SET deleted_at=NULL, is_active=1 WHERE id=?")->execute([$id]);
                 auditLog('restore_employee', "استعادة موظف ID={$id}", $id);
                 $message = "تم استعادة الموظف بنجاح";
+                $msgType = 'success';
+            }
+        }
+
+        // --- إعادة توليد Token ---
+        if ($action === 'regen_token') {
+            $id = (int)($_POST['emp_id'] ?? 0);
+            if ($id) {
+                $token = generateUniqueToken();
+                db()->prepare("UPDATE employees SET unique_token=? WHERE id=?")->execute([$token, $id]);
+                $message = "تم توليد رابط جديد للموظف";
                 $msgType = 'success';
             }
         }
@@ -141,9 +150,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // --- توليد PIN تلقائي لجميع الموظفين ---
+        // --- توليد PIN تلقائي لجميع الموظفين بدون PIN ---
         if ($action === 'auto_generate_pins') {
-            $emps = db()->query("SELECT id FROM employees WHERE deleted_at IS NULL")->fetchAll();
+            $emps = db()->query("SELECT id FROM employees WHERE (pin IS NULL OR pin = '') AND deleted_at IS NULL")->fetchAll();
             $count = 0;
             foreach ($emps as $emp) {
                 $pin = generateUniquePin();
@@ -151,34 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $count++;
             }
             auditLog('auto_generate_pins', "توليد PIN تلقائي لـ {$count} موظف");
-            $message = "تم توليد PIN جديد لـ {$count} موظف";
-            $msgType = 'success';
-        }
-
-        // --- توليد PIN من رقم الجوال ---
-        if ($action === 'generate_pin_from_phone') {
-            $emps = db()->query("SELECT id, phone FROM employees WHERE deleted_at IS NULL")->fetchAll();
-            $usedPins = [];
-            $count = 0;
-            foreach ($emps as $emp) {
-                $phone = preg_replace('/[^0-9]/', '', $emp['phone'] ?? '');
-                $pin = '';
-                if ($phone && strlen($phone) >= 4) {
-                    $pin = substr($phone, -4);
-                }
-                // إذا كان الـ PIN مستخدمًا بالفعل، أو غير صالح، نولّد عشوائي
-                if (!$pin || isset($usedPins[$pin]) || db()->prepare("SELECT id FROM employees WHERE pin = ? AND id != ?")->execute([$pin, $emp['id']]) && db()->prepare("SELECT id FROM employees WHERE pin = ? AND id != ?")->fetch()) {
-                    // توليد PIN عشوائي غير مستخدم
-                    do {
-                        $pin = generateUniquePin();
-                    } while (isset($usedPins[$pin]) || db()->prepare("SELECT id FROM employees WHERE pin = ? AND id != ?")->execute([$pin, $emp['id']]) && db()->prepare("SELECT id FROM employees WHERE pin = ? AND id != ?")->fetch());
-                }
-                $usedPins[$pin] = true;
-                db()->prepare("UPDATE employees SET pin=?, pin_changed_at=NOW() WHERE id=?")->execute([$pin, $emp['id']]);
-                $count++;
-            }
-            auditLog('generate_pin_from_phone', "توليد PIN من الجوال لـ {$count} موظف");
-            $message = "تم تعيين آخر 4 أرقام من الجوال كـ PIN لـ {$count} موظف (مع معالجة التكرار تلقائياً)";
+            $message = "تم توليد PIN لـ {$count} موظف";
             $msgType = 'success';
         }
 
@@ -341,16 +323,21 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         <div class="top-actions" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <button class="btn btn-primary" onclick="openModal('addModal')">+ إضافة موظف</button>
             <a href="<?= SITE_URL ?>/employee/" target="_blank" class="btn btn-secondary" style="text-decoration:none">🔑 بوابة الحضور</a>
-            <button class="btn btn-secondary" onclick="openModal('qrModal');generatePortalQR()" style="gap:6px">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm13-2h-2v3h-3v2h3v3h2v-3h3v-2h-3v-3zm-5 7v-2H8v2h5zm5 0h2v-2h-2v2z"/></svg>
-                باركود البوابة
-            </button>
-            <button class="btn" style="background:#25D366;color:#fff;border:none" onclick="openModal('waSenderModal');waInitSender()">📲 إرسال الروابط واتساب</button>
             <div class="dropdown-wrap" style="position:relative">
                 <button class="btn btn-secondary" onclick="toggleBulkMenu(this)" type="button">
                     ⚙️ إجراءات جماعية ▾
                 </button>
                 <div class="dropdown-menu">
+                    <button type="button" class="dropdown-item" onclick="regenerateAllTokens();this.closest('.dropdown-menu').classList.remove('show')">
+                        <?= svgIcon('attendance', 16) ?> تجديد جميع الروابط
+                    </button>
+                    <button type="button" class="dropdown-item" onclick="copyAllLinks();this.closest('.dropdown-menu').classList.remove('show')" id="btnCopyAll">
+                        <?= svgIcon('copy', 16) ?> نسخ جميع الروابط
+                    </button>
+                    <button type="button" class="dropdown-item" onclick="checkAllLinks();this.closest('.dropdown-menu').classList.remove('show')" id="btnCheckLinks">
+                        🔍 فحص الروابط
+                    </button>
+                    <div style="border-top:1px solid var(--border);margin:4px 0"></div>
                     <form method="POST" onsubmit="return confirm('فك ربط جميع الأجهزة؟')">
                         <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                         <input type="hidden" name="action" value="reset_all_devices">
@@ -373,18 +360,11 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                         </button>
                     </form>
                     <div style="border-top:1px solid var(--border);margin:4px 0"></div>
-                    <form method="POST" onsubmit="return confirm('سيتم توليد أكواد PIN جديدة لجميع الموظفين وحذف القديمة. متأكد؟')">
+                    <form method="POST" onsubmit="return confirm('توليد PIN تلقائي للموظفين بدون PIN؟')">
                         <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                         <input type="hidden" name="action" value="auto_generate_pins">
                         <button type="submit" class="dropdown-item" style="color:var(--green)">
                             🔑 توليد PIN تلقائي
-                        </button>
-                    </form>
-                    <form method="POST" onsubmit="return confirm('سيتم تعيين آخر 4 أرقام من الجوال كـ PIN لكل موظف. إذا تكرر الرقم سيتم توليد PIN عشوائي. متأكد؟')">
-                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-                        <input type="hidden" name="action" value="generate_pin_from_phone">
-                        <button type="submit" class="dropdown-item" style="color:var(--blue)">
-                            📱 إنشاء PIN من الجوال
                         </button>
                     </form>
                 </div>
@@ -431,7 +411,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                                 <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<?= $rowColor ?>;margin-left:5px;vertical-align:middle"></span>
                                 <?= htmlspecialchars($curBranch) ?>
                                 <span style="font-size:.7rem;font-weight:400;color:var(--text3);margin-right:4px">(<?= $brCount ?>)</span>
-
+                                <button class="btn-copy-branch" onclick="copyBranchLinks('<?= htmlspecialchars(addslashes($curBranch), ENT_QUOTES) ?>')" title="نسخ روابط الفرع"><?= svgIcon('copy', 11) ?></button>
                             </td>
                         </tr>
                     <?php endif;
@@ -485,29 +465,28 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <div style="display:flex;gap:4px;align-items:center">
-                            <?php
-                              $waPhone = preg_replace('/[^0-9]/', '', $emp['phone'] ?? '');
-                              if ($waPhone && substr($waPhone, 0, 1) === '0') $waPhone = '966' . substr($waPhone, 1);
-                              elseif ($waPhone && substr($waPhone, 0, 3) !== '966') $waPhone = '966' . $waPhone;
-                              $waGateway = SITE_URL . '/employee/';
-                              $waPin = $emp['pin'] ?? '';
-                              $waMsg = urlencode("مرحباً {$emp['name']}\n\nرابط تسجيل الحضور:\n{$waGateway}\n\nرمز الدخول (PIN): {$waPin}\n\nافتح الرابط وأدخل الرمز للتسجيل.");
-                            ?>
-                            <?php if ($waPhone): ?>
-                              <a href="https://wa.me/<?= $waPhone ?>?text=<?= $waMsg ?>" target="_blank" rel="noopener" class="btn btn-sm" style="background:#25D366;color:#fff;padding:4px 6px;border-radius:6px;font-size:.7rem;line-height:1;text-decoration:none;white-space:nowrap" title="إرسال عبر واتساب">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="#fff" style="vertical-align:middle"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                              </a>
-                            <?php endif; ?>
+                            <?php $link = SITE_URL . '/employee/attendance.php?token=' . $emp['unique_token']; ?>
                             <div class="dropdown-wrap">
                                 <button class="btn btn-secondary btn-sm" onclick="toggleEmpMenu(this)" type="button">⚙️ ▾</button>
                                 <div class="dropdown-menu emp-actions-menu">
-                                    <!-- بروفايل -->
-                                    <a href="employee-profile.php?id=<?= (int)$emp['id'] ?>" class="dropdown-item">👤 بروفايل الموظف</a>
+                                    <!-- روابط -->
+                                    <a href="<?= $link ?>" target="_blank" class="dropdown-item">🔗 فتح الرابط</a>
+                                    <button type="button" class="dropdown-item" onclick="copyLink('<?= $link ?>');this.closest('.dropdown-menu').classList.remove('show')">📋 نسخ الرابط</button>
+                                    <?php if ($emp['phone']): ?>
+                                        <a href="<?= generateWhatsAppLink($emp['phone'], $emp['unique_token']) ?>" target="_blank" class="dropdown-item" style="color:#25D366">💬 إرسال واتساب</a>
+                                    <?php endif; ?>
+                                    <div style="border-top:1px solid var(--border);margin:4px 0"></div>
                                     <!-- تعديل -->
                                     <button type="button" class="dropdown-item" onclick='this.closest(".dropdown-menu").classList.remove("show");openEditModal(<?= json_encode($emp, JSON_UNESCAPED_UNICODE) ?>)'><?= svgIcon('settings', 14) ?> تعديل البيانات</button>
                                     <!-- تغيير PIN -->
                                     <button type="button" class="dropdown-item" onclick='this.closest(".dropdown-menu").classList.remove("show");openChangePinModal(<?= (int)$emp["id"] ?>, <?= json_encode($emp["name"], JSON_UNESCAPED_UNICODE) ?>, <?= json_encode($emp["pin"] ?? "", JSON_UNESCAPED_UNICODE) ?>)'><?= svgIcon('key', 14) ?> تغيير PIN</button>
+                                    <!-- توليد رابط -->
+                                    <form method="POST" onsubmit="return confirm('إعادة توليد رابط؟ الرابط القديم سيتوقف.')">
+                                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                                        <input type="hidden" name="action" value="regen_token">
+                                        <input type="hidden" name="emp_id" value="<?= $emp['id'] ?>">
+                                        <button type="submit" class="dropdown-item"><?= svgIcon('checkout', 14) ?> تجديد الرابط</button>
+                                    </form>
                                     <!-- تفعيل/تعطيل -->
                                     <form method="POST">
                                         <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
@@ -687,368 +666,6 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     </div>
 </div>
 
-<!-- =================== Modal إرسال واتساب =================== -->
-<?php
-// تجهيز بيانات الموظفين لـ JS
-$waEmployees = [];
-foreach ($employees as $emp) {
-    if (!$emp['is_active'] || empty($emp['phone'])) continue;
-    $ph = preg_replace('/[^0-9]/', '', $emp['phone']);
-    if ($ph && $ph[0] === '0') $ph = '966' . substr($ph, 1);
-    elseif ($ph && substr($ph, 0, 3) !== '966') $ph = '966' . $ph;
-    if (strlen($ph) < 9) continue;
-    $waEmployees[] = [
-        'id'     => (int)$emp['id'],
-        'name'   => $emp['name'],
-        'phone'  => $ph,
-        'pin'    => $emp['pin'] ?? '',
-        'branch' => $emp['branch_name'] ?? 'بدون فرع',
-    ];
-}
-?>
-<!-- =================== Modal باركود بوابة الموظف =================== -->
-<div class="modal-overlay" id="qrModal">
-    <div class="modal" style="max-width:480px;padding:0;border-radius:16px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.3)">
-        <div style="background:linear-gradient(135deg,#F97316,#EA580C);padding:20px 24px;display:flex;justify-content:space-between;align-items:center">
-            <div style="color:#fff;font-weight:700;font-size:1.05rem;display:flex;align-items:center;gap:8px">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm13-2h-2v3h-3v2h3v3h2v-3h3v-2h-3v-3zm-5 7v-2H8v2h5zm5 0h2v-2h-2v2z"/></svg>
-                باركود بوابة الحضور
-            </div>
-            <button type="button" onclick="closeModal('qrModal')" style="background:rgba(255,255,255,.2);border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;color:#fff;font-size:1.1rem;display:flex;align-items:center;justify-content:center">✕</button>
-        </div>
-        <div style="padding:28px;text-align:center;background:var(--surface)">
-            <div id="qrCardPrint" style="display:inline-block;background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08);border:2px solid #f3f4f6;max-width:340px;width:100%">
-                <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px">
-                    <img src="<?= SITE_URL ?>/assets/images/loogo.png" alt="Logo" style="width:36px;height:36px;border-radius:8px;object-fit:cover">
-                    <div style="font-weight:700;font-size:1rem;color:#1f2937"><?= SITE_NAME ?></div>
-                </div>
-                <div id="qrContainer" style="display:flex;justify-content:center;margin:8px 0 16px"></div>
-                <div style="font-size:.82rem;color:#6b7280;margin-bottom:6px;direction:ltr;word-break:break-all;font-family:monospace;background:#f9fafb;padding:8px 12px;border-radius:8px" id="qrUrlDisplay"></div>
-                <div style="margin-top:12px;font-size:.78rem;color:#9ca3af;line-height:1.5">امسح الباركود بكاميرا الجوال للدخول إلى بوابة تسجيل الحضور</div>
-            </div>
-            <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-                <button class="btn btn-primary" onclick="downloadQR()" style="gap:6px">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                    تحميل الصورة
-                </button>
-                <button class="btn btn-secondary" onclick="printQR()" style="gap:6px">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
-                    طباعة
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal-overlay" id="waSenderModal">
-    <div class="modal" style="max-width:640px;max-height:90vh;display:flex;flex-direction:column">
-        <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center">
-            <span>📲 إرسال روابط الحضور عبر واتساب</span>
-            <button type="button" onclick="closeModal('waSenderModal')" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text3)">✕</button>
-        </div>
-
-        <div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:#92400E;line-height:1.6">
-            <strong>💡 طريقة العمل:</strong> يفتح النظام نافذة واتساب ويب واحدة ويعرض رسالة كل موظف بالتسلسل.
-            اضغط «إرسال» في واتساب ثم اضغط «التالي ←» هنا للانتقال للموظف التالي.
-            <br><strong>⏱️ انتظر 5 ثوانٍ على الأقل بين كل إرسال</strong> لتجنّب حظر واتساب.
-        </div>
-
-        <!-- شريط التقدم -->
-        <div style="margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;font-size:.78rem;color:var(--text2);margin-bottom:4px">
-                <span id="waProgressText">0 / <?= count($waEmployees) ?></span>
-                <span id="waProgressPct">0%</span>
-            </div>
-            <div style="background:var(--surface2);border-radius:6px;height:8px;overflow:hidden">
-                <div id="waProgressBar" style="height:100%;background:linear-gradient(90deg,#25D366,#128C7E);width:0%;transition:width .3s;border-radius:6px"></div>
-            </div>
-        </div>
-
-        <!-- الموظف الحالي -->
-        <div id="waCurrentEmp" style="background:var(--surface);border-radius:10px;padding:16px;margin-bottom:12px;border:1.5px solid var(--border);display:none">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                <div>
-                    <strong id="waEmpName" style="font-size:1rem"></strong>
-                    <span id="waEmpBranch" style="font-size:.75rem;color:var(--text3);margin-right:8px"></span>
-                </div>
-                <span id="waEmpPhone" style="font-family:monospace;font-size:.85rem;color:var(--text2);direction:ltr"></span>
-            </div>
-            <div style="background:var(--bg);border-radius:8px;padding:10px;font-size:.82rem;line-height:1.7;color:var(--text2);white-space:pre-wrap;direction:rtl" id="waMessagePreview"></div>
-        </div>
-
-        <!-- قائمة الانتظار -->
-        <div style="flex:1;overflow-y:auto;margin-bottom:12px;max-height:220px" id="waQueueContainer">
-            <div style="font-size:.78rem;color:var(--text3);margin-bottom:6px;font-weight:600">قائمة الانتظار:</div>
-            <div id="waQueueList" style="display:flex;flex-direction:column;gap:3px"></div>
-        </div>
-
-        <!-- أزرار التحكم -->
-        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px">
-            <button class="btn" style="background:#25D366;color:#fff;border:none;padding:8px 24px;font-size:.9rem" id="waStartBtn" onclick="waStart()">▶️ ابدأ الإرسال</button>
-            <button class="btn btn-primary" id="waNextBtn" onclick="waNext()" style="display:none;padding:8px 24px;font-size:.9rem" disabled>التالي ← <span id="waCountdown"></span></button>
-            <button class="btn btn-secondary" id="waSkipBtn" onclick="waSkip()" style="display:none;padding:8px 16px;font-size:.85rem">تخطي</button>
-            <button class="btn btn-secondary" onclick="closeModal('waSenderModal')" id="waDoneBtn" style="display:none;padding:8px 24px">✅ تم</button>
-        </div>
-    </div>
-</div>
-
-<script>
-// =================== واتساب Sender ===================
-const waEmployees = <?= json_encode($waEmployees, JSON_UNESCAPED_UNICODE) ?>;
-const waGateway   = <?= json_encode(SITE_URL . '/employee/') ?>;
-let waIndex = 0;
-let waWindow = null;
-let waCountdownTimer = null;
-const WA_COOLDOWN = 6; // ثوانٍ الحد الأدنى بين الرسائل
-
-function waBuildMessage(emp) {
-    return "مرحباً " + emp.name + "\n\nرابط تسجيل الحضور:\n" + waGateway + "\n\nرمز الدخول (PIN): " + emp.pin + "\n\nافتح الرابط وأدخل الرمز للتسجيل.";
-}
-
-function waBuildUrl(emp) {
-    return "https://wa.me/" + emp.phone + "?text=" + encodeURIComponent(waBuildMessage(emp));
-}
-
-function waRenderQueue() {
-    const list = document.getElementById('waQueueList');
-    list.innerHTML = '';
-    waEmployees.forEach(function(emp, i) {
-        const div = document.createElement('div');
-        div.id = 'waQ_' + emp.id;
-        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-radius:6px;font-size:.8rem;';
-        if (i < waIndex) {
-            div.style.background = '#D1FAE520';
-            div.style.color = '#16A34A';
-            div.innerHTML = '<span>✅ ' + emp.name + '</span><span style="font-size:.7rem;color:var(--text3)">' + emp.branch + '</span>';
-        } else if (i === waIndex) {
-            div.style.background = '#DBEAFE';
-            div.style.fontWeight = '700';
-            div.innerHTML = '<span>➤ ' + emp.name + '</span><span style="font-size:.7rem">' + emp.branch + '</span>';
-        } else {
-            div.style.color = 'var(--text3)';
-            div.innerHTML = '<span>○ ' + emp.name + '</span><span style="font-size:.7rem">' + emp.branch + '</span>';
-        }
-        list.appendChild(div);
-    });
-}
-
-function waUpdateProgress() {
-    const total = waEmployees.length;
-    const pct = total > 0 ? Math.round((waIndex / total) * 100) : 0;
-    document.getElementById('waProgressText').textContent = waIndex + ' / ' + total;
-    document.getElementById('waProgressPct').textContent = pct + '%';
-    document.getElementById('waProgressBar').style.width = pct + '%';
-}
-
-function waShowCurrent() {
-    if (waIndex >= waEmployees.length) {
-        document.getElementById('waCurrentEmp').style.display = 'none';
-        document.getElementById('waNextBtn').style.display = 'none';
-        document.getElementById('waSkipBtn').style.display = 'none';
-        document.getElementById('waStartBtn').style.display = 'none';
-        document.getElementById('waDoneBtn').style.display = '';
-        waUpdateProgress();
-        waRenderQueue();
-        return;
-    }
-    const emp = waEmployees[waIndex];
-    document.getElementById('waCurrentEmp').style.display = '';
-    document.getElementById('waEmpName').textContent = emp.name;
-    document.getElementById('waEmpBranch').textContent = '(' + emp.branch + ')';
-    document.getElementById('waEmpPhone').textContent = '+' + emp.phone;
-    document.getElementById('waMessagePreview').textContent = waBuildMessage(emp);
-    waUpdateProgress();
-    waRenderQueue();
-    // scroll current into view
-    const qEl = document.getElementById('waQ_' + emp.id);
-    if (qEl) qEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-}
-
-function waOpenLink(emp) {
-    const url = waBuildUrl(emp);
-    if (waWindow && !waWindow.closed) {
-        waWindow.location.href = url;
-        waWindow.focus();
-    } else {
-        waWindow = window.open(url, 'wa_sender');
-    }
-}
-
-function waStart() {
-    waIndex = 0;
-    document.getElementById('waStartBtn').style.display = 'none';
-    document.getElementById('waNextBtn').style.display = '';
-    document.getElementById('waSkipBtn').style.display = '';
-    waShowCurrent();
-    // فتح أول رابط
-    waOpenLink(waEmployees[0]);
-    waStartCooldown();
-}
-
-function waStartCooldown() {
-    const btn = document.getElementById('waNextBtn');
-    const span = document.getElementById('waCountdown');
-    btn.disabled = true;
-    let sec = WA_COOLDOWN;
-    span.textContent = '(' + sec + ')';
-    if (waCountdownTimer) clearInterval(waCountdownTimer);
-    waCountdownTimer = setInterval(function() {
-        sec--;
-        if (sec <= 0) {
-            clearInterval(waCountdownTimer);
-            btn.disabled = false;
-            span.textContent = '';
-        } else {
-            span.textContent = '(' + sec + ')';
-        }
-    }, 1000);
-}
-
-function waNext() {
-    waIndex++;
-    if (waIndex < waEmployees.length) {
-        waShowCurrent();
-        waOpenLink(waEmployees[waIndex]);
-        waStartCooldown();
-    } else {
-        waShowCurrent(); // will show done state
-    }
-}
-
-function waSkip() {
-    waIndex++;
-    if (waIndex < waEmployees.length) {
-        waShowCurrent();
-        waOpenLink(waEmployees[waIndex]);
-        waStartCooldown();
-    } else {
-        waShowCurrent();
-    }
-}
-
-// تهيئة القائمة عند فتح المودال
-function waInitSender() {
-    waIndex = 0;
-    document.getElementById('waStartBtn').style.display = '';
-    document.getElementById('waNextBtn').style.display = 'none';
-    document.getElementById('waSkipBtn').style.display = 'none';
-    document.getElementById('waDoneBtn').style.display = 'none';
-    waUpdateProgress();
-    waRenderQueue();
-    document.getElementById('waCurrentEmp').style.display = 'none';
-}
-</script>
-
-<script src="<?= SITE_URL ?>/assets/js/qrcode.min.js"></script>
-<script>
-    function generatePortalQR() {
-        var portalUrl = <?= json_encode(SITE_URL . '/employee/') ?>;
-        document.getElementById('qrUrlDisplay').textContent = portalUrl;
-        var container = document.getElementById('qrContainer');
-        container.innerHTML = '';
-
-        try {
-            var qr = QRCodeGen(0, 'M');
-            qr.addData(portalUrl);
-            qr.make();
-
-            var moduleCount = qr.getModuleCount();
-            var cellSize = 8;
-            var margin = cellSize * 2;
-            var size = moduleCount * cellSize + margin * 2;
-
-            var canvas = document.createElement('canvas');
-            var scale = 3;
-            canvas.width = size * scale;
-            canvas.height = size * scale;
-            canvas.style.width = size + 'px';
-            canvas.style.height = size + 'px';
-            canvas.style.borderRadius = '12px';
-            canvas.id = 'qrCanvas';
-
-            var ctx = canvas.getContext('2d');
-            ctx.scale(scale, scale);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, size, size);
-
-            ctx.fillStyle = '#1f2937';
-            for (var r = 0; r < moduleCount; r++) {
-                for (var c = 0; c < moduleCount; c++) {
-                    if (qr.isDark(r, c)) {
-                        var x = c * cellSize + margin;
-                        var y = r * cellSize + margin;
-                        var rad = cellSize * 0.3;
-                        ctx.beginPath();
-                        ctx.moveTo(x + rad, y);
-                        ctx.lineTo(x + cellSize - rad, y);
-                        ctx.arcTo(x + cellSize, y, x + cellSize, y + rad, rad);
-                        ctx.lineTo(x + cellSize, y + cellSize - rad);
-                        ctx.arcTo(x + cellSize, y + cellSize, x + cellSize - rad, y + cellSize, rad);
-                        ctx.lineTo(x + rad, y + cellSize);
-                        ctx.arcTo(x, y + cellSize, x, y + cellSize - rad, rad);
-                        ctx.lineTo(x, y + rad);
-                        ctx.arcTo(x, y, x + rad, y, rad);
-                        ctx.fill();
-                    }
-                }
-            }
-
-            var logo = new Image();
-            logo.crossOrigin = 'anonymous';
-            logo.onload = function() {
-                var logoSize = size * 0.22;
-                var lx = (size - logoSize) / 2;
-                var ly = (size - logoSize) / 2;
-                var pad = logoSize * 0.18;
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(size / 2, size / 2, logoSize / 2 + pad, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.strokeStyle = '#F97316';
-                ctx.lineWidth = 2.5;
-                ctx.beginPath();
-                ctx.arc(size / 2, size / 2, logoSize / 2 + pad - 1.5, 0, 2 * Math.PI);
-                ctx.stroke();
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(size / 2, size / 2, logoSize / 2, 0, 2 * Math.PI);
-                ctx.clip();
-                ctx.drawImage(logo, lx, ly, logoSize, logoSize);
-                ctx.restore();
-                container.appendChild(canvas);
-            };
-            logo.onerror = function() {
-                container.appendChild(canvas);
-            };
-            logo.src = <?= json_encode(SITE_URL . '/assets/images/loogo.png') ?>;
-        } catch(e) {
-            container.innerHTML = '<div style="color:#EF4444;padding:20px">خطأ في توليد الباركود: ' + e + '</div>';
-        }
-    }
-
-    function downloadQR() {
-        var canvas = document.getElementById('qrCanvas');
-        if (!canvas) return;
-        var link = document.createElement('a');
-        link.download = 'بوابة-الحضور-QR.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    }
-
-    function printQR() {
-        var card = document.getElementById('qrCardPrint');
-        if (!card) return;
-        var win = window.open('', '_blank');
-        win.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>باركود بوابة الحضور</title>');
-        win.document.write('<style>*{margin:0;padding:0;box-sizing:border-box}body{display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:Tajawal,sans-serif;background:#fff}img{max-width:100%}.card{text-align:center;padding:40px}</style>');
-        win.document.write('</head><body><div class="card">');
-        win.document.write(card.innerHTML);
-        win.document.write('</div></body></html>');
-        win.document.close();
-        setTimeout(function() { win.print(); }, 600);
-    }
-</script>
-
 <script>
     function openModal(id) {
         document.getElementById(id).classList.add('show');
@@ -1076,7 +693,174 @@ function waInitSender() {
         openModal('changePinModal');
     }
 
+    function copyLink(link) {
+        navigator.clipboard.writeText(link).then(() => alert('تم نسخ الرابط!')).catch(() => {
+            prompt('انسخ الرابط:', link);
+        });
+    }
 
+    // تحديث جميع الروابط
+    function regenerateAllTokens() {
+        if (!confirm('هل أنت متأكد من تجديد جميع الروابط؟\n\nسيتم إنشاء روابط جديدة لجميع الموظفين النشطين.\nالروابط القديمة لن تعمل بعد ذلك.')) {
+            return;
+        }
+
+        const btn = document.getElementById('btnRegenerate');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ جاري التجديد...';
+
+        const formData = new FormData();
+        formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?? '' ?>');
+        formData.append('action', 'all');
+
+        fetch('../api/regenerate-tokens.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    location.reload();
+                } else {
+                    alert('❌ خطأ: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<?= svgIcon('attendance', 16) ?> تجديد جميع الروابط';
+                }
+            })
+            .catch(err => {
+                alert('❌ حدث خطأ: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '<?= svgIcon('attendance', 16) ?> تجديد جميع الروابط';
+            });
+    }
+
+    // بيانات الروابط حسب الفرع — يُبنى من PHP
+    const branchLinksData = <?php
+                            // بناء بيانات الفروع والروابط
+                            $branchLinks = [];
+                            foreach ($employees as $emp) {
+                                if (!$emp['is_active']) continue;
+                                $bName = $emp['branch_name'] ?? 'بدون فرع';
+                                if (!isset($branchLinks[$bName])) $branchLinks[$bName] = [];
+                                $branchLinks[$bName][] = [
+                                    'name' => $emp['name'],
+                                    'link' => SITE_URL . '/employee/attendance.php?token=' . $emp['unique_token']
+                                ];
+                            }
+                            echo json_encode($branchLinks, JSON_UNESCAPED_UNICODE);
+                            ?>;
+
+    function formatBranchMessage(branchName, emps) {
+        const today = new Date().toLocaleDateString('ar-SA', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        let msg = '📋 *روابط تسجيل الحضور والانصراف*\n';
+        msg += '🏢 *الفرع: ' + branchName + '*\n';
+        msg += '📅 *التاريخ: ' + today + '*\n';
+        msg += '━━━━━━━━━━━━━━━\n\n';
+        emps.forEach((e, i) => {
+            msg += (i + 1) + '. *' + e.name + '*\n';
+            msg += '🔗 ' + e.link + '\n\n';
+        });
+        msg += '━━━━━━━━━━━━━━━\n';
+        msg += '⚠️ _الرابط خاص بك، لا تشاركه مع أحد_';
+        return msg;
+    }
+
+    function copyBranchLinks(branchName) {
+        const emps = branchLinksData[branchName];
+        if (!emps || emps.length === 0) {
+            alert('لا يوجد موظفين نشطين في هذا الفرع');
+            return;
+        }
+        const msg = formatBranchMessage(branchName, emps);
+        navigator.clipboard.writeText(msg).then(() => {
+            alert('✅ تم نسخ روابط فرع "' + branchName + '" (' + emps.length + ' موظف) — الصقها في مجموعة الواتساب');
+        }).catch(() => {
+            prompt('انسخ النص:', msg);
+        });
+    }
+
+    function copyAllLinks() {
+        const btn = document.getElementById('btnCopyAll');
+        const today = new Date().toLocaleDateString('ar-SA', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        let msg = '📋 *جميع روابط تسجيل الحضور والانصراف*\n';
+        msg += '📅 *التاريخ: ' + today + '*\n';
+        msg += '━━━━━━━━━━━━━━━\n\n';
+        const branches = Object.keys(branchLinksData);
+        branches.forEach(branchName => {
+            const emps = branchLinksData[branchName];
+            if (emps.length === 0) return;
+            msg += '🏢 *' + branchName + '* (' + emps.length + ' موظف)\n';
+            msg += '───────────────\n';
+            emps.forEach((e, i) => {
+                msg += (i + 1) + '. *' + e.name + '*\n';
+                msg += '🔗 ' + e.link + '\n\n';
+            });
+        });
+        msg += '━━━━━━━━━━━━━━━\n';
+        msg += '⚠️ _الرابط خاص بك، لا تشاركه مع أحد_';
+        navigator.clipboard.writeText(msg).then(() => {
+            const total = branches.reduce((s, b) => s + branchLinksData[b].length, 0);
+            btn.innerHTML = '✅ تم النسخ (' + total + ' موظف)';
+            setTimeout(() => {
+                btn.innerHTML = '<?= svgIcon('copy', 16) ?> نسخ جميع الروابط';
+            }, 3000);
+        }).catch(() => {
+            prompt('انسخ النص:', msg);
+        });
+    }
+
+    // فحص جميع الروابط
+    function checkAllLinks() {
+        const btn = document.getElementById('btnCheckLinks');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ جاري الفحص...';
+
+        // تعيين كل الحالات لـ "جاري..."
+        document.querySelectorAll('.link-status').forEach(el => {
+            el.innerHTML = '<span style="color:var(--text3)">⏳</span>';
+        });
+
+        fetch('../api/check-links.php')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    data.results.forEach(r => {
+                        const el = document.querySelector(`.link-status[data-emp-id="${r.id}"]`);
+                        if (!el) return;
+                        if (r.status === 'ok') {
+                            el.innerHTML = '<span class="badge badge-green" style="font-size:.65rem">✅ يعمل</span>';
+                        } else if (r.status === 'inactive') {
+                            el.innerHTML = '<span class="badge badge-yellow" style="font-size:.65rem">⚠️ معطّل</span>';
+                        } else {
+                            el.innerHTML = '<span class="badge badge-red" style="font-size:.65rem">❌ خطأ ' + r.code + '</span>';
+                        }
+                    });
+                    btn.innerHTML = '✅ تم الفحص (' + data.ok + '/' + data.total + ')';
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '🔍 فحص الروابط';
+                    }, 5000);
+                } else {
+                    alert('❌ خطأ: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '🔍 فحص الروابط';
+                }
+            })
+            .catch(err => {
+                alert('❌ حدث خطأ: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '🔍 فحص الروابط';
+            });
+    }
 
     // إغلاق modal عند الضغط خارجه
     document.querySelectorAll('.modal-overlay').forEach(o => {
@@ -1101,29 +885,11 @@ function waInitSender() {
         if (!wasOpen) {
             menu.classList.add('show');
             const ov = document.getElementById('dropdownOverlay');
-            if (window.innerWidth <= 768) {
-                // موبايل: bottom-sheet (CSS يتكفل)
-                if (ov) ov.classList.add('show');
-            } else {
-                // ديسكتوب: fixed position لتجنب قص overflow
-                const r = btn.getBoundingClientRect();
-                menu.style.position = 'fixed';
-                menu.style.top  = (r.bottom + 4) + 'px';
-                menu.style.right = 'auto';
-                menu.style.left = Math.max(8, r.right - 220) + 'px';
-                menu.style.zIndex = '9999';
-            }
+            if (ov && window.innerWidth <= 768) ov.classList.add('show');
         }
     }
     function closeAllMenus() {
-        document.querySelectorAll('.dropdown-menu.show').forEach(function(m) {
-            m.classList.remove('show');
-            m.style.position = '';
-            m.style.top = '';
-            m.style.left = '';
-            m.style.right = '';
-            m.style.zIndex = '';
-        });
+        document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
         const ov = document.getElementById('dropdownOverlay');
         if (ov) ov.classList.remove('show');
     }
@@ -1143,9 +909,19 @@ function waInitSender() {
         if (!e.target.closest('.dropdown-wrap')) closeAllMenus();
     });
 
-</script>
+    function tick() {
+        const el = document.getElementById('topbarClock');
+        if (el) el.textContent = new Date().toLocaleString('ar-SA');
+    }
+    tick();
+    setInterval(tick, 1000);
 
-<?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('sidebarOverlay').classList.toggle('show');
+    }
+    document.getElementById('sidebarOverlay')?.addEventListener('click', toggleSidebar);
+</script>
 
 </div>
 </div>
