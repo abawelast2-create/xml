@@ -455,6 +455,58 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     </div>
 </div>
 
+<!-- نافذة إضافة يدوية -->
+<div class="modal-overlay" id="manualModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:var(--surface,#fff);border-radius:16px;width:90%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+        <div style="background:linear-gradient(135deg,#059669,#047857);padding:16px 24px;color:#fff;display:flex;justify-content:space-between;align-items:center">
+            <h3 style="margin:0;font-size:1.1rem">➕ إضافة سجل حضور يدوي</h3>
+            <button onclick="closeManualModal()" style="background:none;border:none;color:#fff;font-size:1.4rem;cursor:pointer">&times;</button>
+        </div>
+        <form id="manualForm" style="padding:24px;display:flex;flex-direction:column;gap:14px">
+            <div>
+                <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">اختر موظف مسجل</label>
+                <select id="manualEmpSelect" name="manual_emp_id" class="form-control" style="width:100%">
+                    <option value="0">— غير مسجل (أدخل الاسم أدناه) —</option>
+                    <?php foreach ($empList as $e): ?>
+                    <option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div id="manualNameWrap">
+                <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">اسم الموظف (غير مسجل)</label>
+                <input type="text" name="manual_name" class="form-control" placeholder="أدخل الاسم الكامل..." style="width:100%">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                    <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">النوع</label>
+                    <select name="manual_type" class="form-control" style="width:100%">
+                        <option value="in">▶ دخول</option>
+                        <option value="out">◀ انصراف</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">التاريخ</label>
+                    <input type="date" name="manual_date" class="form-control" value="<?= date('Y-m-d') ?>" required style="width:100%">
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                    <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">الوقت</label>
+                    <input type="time" name="manual_time" class="form-control" value="<?= date('H:i') ?>" required style="width:100%">
+                </div>
+                <div>
+                    <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">ملاحظات</label>
+                    <input type="text" name="manual_notes" class="form-control" placeholder="اختياري..." style="width:100%">
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+                <button type="button" onclick="closeManualModal()" class="btn btn-secondary">إلغاء</button>
+                <button type="submit" class="btn btn-primary" id="manualSaveBtn" style="background:#059669;border-color:#059669">💾 إضافة السجل</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 // =================== الساعة ===================
 function tick(){ const el=document.getElementById('topbarClock'); if(el) el.textContent=new Date().toLocaleString('ar-SA'); }
@@ -751,58 +803,6 @@ document.getElementById('manualForm')?.addEventListener('submit', async function
     }
 });
 </script>
-
-<!-- نافذة إضافة يدوية -->
-<div class="modal-overlay" id="manualModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
-    <div style="background:var(--surface,#fff);border-radius:16px;width:90%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
-        <div style="background:linear-gradient(135deg,#059669,#047857);padding:16px 24px;color:#fff;display:flex;justify-content:space-between;align-items:center">
-            <h3 style="margin:0;font-size:1.1rem">➕ إضافة سجل حضور يدوي</h3>
-            <button onclick="closeManualModal()" style="background:none;border:none;color:#fff;font-size:1.4rem;cursor:pointer">&times;</button>
-        </div>
-        <form id="manualForm" style="padding:24px;display:flex;flex-direction:column;gap:14px">
-            <div>
-                <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">اختر موظف مسجل</label>
-                <select id="manualEmpSelect" name="manual_emp_id" class="form-control" style="width:100%">
-                    <option value="0">— غير مسجل (أدخل الاسم أدناه) —</option>
-                    <?php foreach ($empList as $e): ?>
-                    <option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div id="manualNameWrap">
-                <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">اسم الموظف (غير مسجل)</label>
-                <input type="text" name="manual_name" class="form-control" placeholder="أدخل الاسم الكامل..." style="width:100%">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div>
-                    <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">النوع</label>
-                    <select name="manual_type" class="form-control" style="width:100%">
-                        <option value="in">▶ دخول</option>
-                        <option value="out">◀ انصراف</option>
-                    </select>
-                </div>
-                <div>
-                    <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">التاريخ</label>
-                    <input type="date" name="manual_date" class="form-control" value="<?= date('Y-m-d') ?>" required style="width:100%">
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div>
-                    <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">الوقت</label>
-                    <input type="time" name="manual_time" class="form-control" value="<?= date('H:i') ?>" required style="width:100%">
-                </div>
-                <div>
-                    <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">ملاحظات</label>
-                    <input type="text" name="manual_notes" class="form-control" placeholder="اختياري..." style="width:100%">
-                </div>
-            </div>
-            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-                <button type="button" onclick="closeManualModal()" class="btn btn-secondary">إلغاء</button>
-                <button type="submit" class="btn btn-primary" id="manualSaveBtn" style="background:#059669;border-color:#059669">💾 إضافة السجل</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 </div></div>
 </body></html>
