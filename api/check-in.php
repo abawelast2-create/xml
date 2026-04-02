@@ -75,14 +75,19 @@ if ($outsideWindow) {
 }
 
 // التحقق من النطاق الجغرافي (باستخدام فرع الموظف إن وجد)
-$geoCheck = isWithinGeofence($lat, $lon, $employee['branch_id'] ?? null);
-if (!$geoCheck['allowed']) {
-    jsonResponse([
-        'success'  => false,
-        'message'  => "⛔ لا يمكن تسجيل الحضور من خارج نطاق العمل.\n\n📍 المسافة الحالية: {$geoCheck['distance']} متر\n📏 الحد المسموح: {$geoCheck['radius']} متر\n\nيرجى التوجه إلى مقر العمل والمحاولة مجدداً.",
-        'distance' => $geoCheck['distance'],
-        'radius'   => $geoCheck['radius']
-    ], 200);
+// تخطي التحقق إذا كان الموظف معفى من شرط الموقع
+if (!empty($employee['bypass_geofence'])) {
+    $geoCheck = ['allowed' => true, 'distance' => 0, 'radius' => 0, 'message' => 'معفى من شرط الموقع'];
+} else {
+    $geoCheck = isWithinGeofence($lat, $lon, $employee['branch_id'] ?? null);
+    if (!$geoCheck['allowed']) {
+        jsonResponse([
+            'success'  => false,
+            'message'  => "⛔ لا يمكن تسجيل الحضور من خارج نطاق العمل.\n\n📍 المسافة الحالية: {$geoCheck['distance']} متر\n📏 الحد المسموح: {$geoCheck['radius']} متر\n\nيرجى التوجه إلى مقر العمل والمحاولة مجدداً.",
+            'distance' => $geoCheck['distance'],
+            'radius'   => $geoCheck['radius']
+        ], 200);
+    }
 }
 
 // تسجيل الدخول

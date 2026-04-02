@@ -164,6 +164,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msgType = 'success';
         }
 
+        // --- تبديل إعفاء الموقع الجغرافي ---
+        if ($action === 'toggle_geofence_bypass') {
+            $id = (int)($_POST['emp_id'] ?? 0);
+            if ($id) {
+                db()->prepare("UPDATE employees SET bypass_geofence = 1 - bypass_geofence WHERE id=?")->execute([$id]);
+                $st = db()->prepare("SELECT bypass_geofence, name FROM employees WHERE id=?");
+                $st->execute([$id]);
+                $r = $st->fetch();
+                $statusLabel = $r['bypass_geofence'] ? 'معفى' : 'غير معفى';
+                auditLog('toggle_geofence_bypass', "تبديل إعفاء الموقع للموظف {$r['name']}: {$statusLabel}", $id);
+                $message = "تم تحديث إعفاء الموقع: {$statusLabel}";
+                $msgType = 'success';
+            }
+        }
+
         // --- إعادة تعيين بصمة الجهاز ---
         if ($action === 'reset_device') {
             $id = (int)($_POST['emp_id'] ?? 0);
@@ -434,6 +449,9 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                             <?php else: ?>
                                 <span class="badge badge-red">معطّل</span>
                             <?php endif; ?>
+                            <?php if (!empty($emp['bypass_geofence'])): ?>
+                                <span class="badge badge-blue" style="font-size:.6rem;margin-top:2px;display:inline-block" title="معفى من شرط الموقع الجغرافي">🌍 بلا موقع</span>
+                            <?php endif; ?>
                         </td>
                         <td style="text-align:center">
                             <?php
@@ -521,6 +539,17 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                                             <button type="submit" class="dropdown-item" style="color:var(--orange,#F59E0B)">👁️ ربط مراقبة</button>
                                         </form>
                                     <?php endif; ?>
+                                    <!-- إعفاء من الموقع الجغرافي -->
+                                    <form method="POST">
+                                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                                        <input type="hidden" name="action" value="toggle_geofence_bypass">
+                                        <input type="hidden" name="emp_id" value="<?= $emp['id'] ?>">
+                                        <?php if (!empty($emp['bypass_geofence'])): ?>
+                                            <button type="submit" class="dropdown-item" style="color:var(--green)">📍 إلغاء إعفاء الموقع</button>
+                                        <?php else: ?>
+                                            <button type="submit" class="dropdown-item" style="color:var(--blue,#3B82F6)">🌍 إعفاء من شرط الموقع</button>
+                                        <?php endif; ?>
+                                    </form>
                                     <div style="border-top:1px solid var(--border);margin:4px 0"></div>
                                     <!-- أرشفة -->
                                     <form method="POST" onsubmit="return confirm('أرشفة الموظف؟')">
