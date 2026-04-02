@@ -57,6 +57,9 @@
             <a href="employee-transfer.php" class="nav-item <?= ($activePage ?? '') === 'employee-transfer' ? 'active' : '' ?>">
                 <span class="nav-icon"><?= svgIcon('employees', 18) ?></span> نقل الموظفين
             </a>
+            <a href="auto-attendance.php" class="nav-item <?= ($activePage ?? '') === 'auto-attendance' ? 'active' : '' ?>">
+                <span class="nav-icon">🤖</span> الحضور التلقائي
+            </a>
 
             <div class="nav-label">التقارير</div>
             <a href="attendance.php" class="nav-item <?= ($activePage ?? '') === 'attendance' ? 'active' : '' ?>">
@@ -73,6 +76,9 @@
             </a>
             <a href="report-branches.php" class="nav-item <?= ($activePage ?? '') === 'report-branches' ? 'active' : '' ?>">
                 <span class="nav-icon"><?= svgIcon('branch', 18) ?></span> مقارنة الفروع
+            </a>
+            <a href="report-early.php" class="nav-item <?= ($activePage ?? '') === 'report-early' ? 'active' : '' ?>">
+                <span class="nav-icon">⭐</span> تقرير المتميزين
             </a>
             <a href="report-charts.php" class="nav-item <?= ($activePage ?? '') === 'report-charts' ? 'active' : '' ?>">
                 <span class="nav-icon"><?= svgIcon('attendance', 18) ?></span> التقارير البيانية

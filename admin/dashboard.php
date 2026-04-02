@@ -253,6 +253,21 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 }
 .radar-outer-pulse.warn { border-color: rgba(245,158,11,.3); }
 .radar-outer-pulse.danger { border-color: rgba(239,68,68,.3); }
+.emp-name-label {
+    background: rgba(15,23,42,.85) !important;
+    color: #fff !important;
+    border: 1px solid rgba(96,165,250,.5) !important;
+    border-radius: 6px !important;
+    padding: 2px 8px !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    font-family: Tajawal, sans-serif !important;
+    white-space: nowrap !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3) !important;
+}
+.emp-name-label::before {
+    border-top-color: rgba(15,23,42,.85) !important;
+}
 </style>
 <script>
 (function(){
@@ -303,24 +318,32 @@ require_once __DIR__ . '/../includes/admin_layout.php';
             </div>`
         });
         const marker = L.marker([b.latitude, b.longitude], {icon: radarIcon}).addTo(map);
-        marker.bindPopup(`<div style="text-align:center;font-family:Tajawal;min-width:150px;padding:4px">
-            <strong style="font-size:1rem">${b.name}</strong><br>
-            <div style="margin:6px 0;padding:6px;background:rgba(0,0,0,.05);border-radius:8px">
-                <span style="color:${color};font-size:1.3rem;font-weight:800">${pct}%</span><br>
-                <small>الحضور: ${b.present_today} من ${b.emp_count}</small>
+        marker.bindPopup(`<div style="text-align:center;font-family:Tajawal;min-width:180px;padding:6px">
+            <strong style="font-size:1.05rem">${b.name}</strong><br>
+            <div style="margin:8px 0;padding:8px;background:rgba(0,0,0,.05);border-radius:10px">
+                <span style="color:${color};font-size:1.4rem;font-weight:800">${pct}%</span><br>
+                <div style="background:rgba(0,0,0,.1);border-radius:6px;height:8px;margin:6px 0;overflow:hidden">
+                    <div style="background:${color};height:100%;width:${pct}%;border-radius:6px;transition:width .5s"></div>
+                </div>
+                <small>الحضور: <strong>${b.present_today}</strong> من <strong>${b.emp_count}</strong></small>
             </div>
-            <small style="color:#888">نطاق: ${geoRadius}م</small>
+            <small style="color:#888">📏 نطاق: ${geoRadius}م</small><br>
+            <small style="color:#888">👥 موظفون حاضرون: ${branchCheckins.length}</small>
         </div>`);
 
         // نقاط الموظفين الحية داخل هذا الفرع
         const branchCheckins = liveCheckins.filter(c => c.branch_id == b.id);
-        branchCheckins.forEach(c => {
-            L.circleMarker([c.latitude, c.longitude], {
-                radius: 4, fillColor: '#60A5FA', color: '#fff',
-                weight: 1, fillOpacity: 0.9
-            }).addTo(map).bindTooltip(c.employee_name, {
-                direction: 'top', offset: [0, -6],
-                className: 'emp-tooltip'
+        branchCheckins.forEach((c, idx) => {
+            const empMarker = L.circleMarker([c.latitude, c.longitude], {
+                radius: 5, fillColor: '#60A5FA', color: '#fff',
+                weight: 1.5, fillOpacity: 0.9
+            }).addTo(map);
+            // عرض اسم الموظف بشكل دائم
+            empMarker.bindTooltip(c.employee_name, {
+                permanent: true,
+                direction: 'top',
+                offset: [0, -8],
+                className: 'emp-name-label'
             });
         });
     });

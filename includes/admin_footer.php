@@ -9,8 +9,30 @@
 <script>
 // Session Timeout Manager
 if (typeof SessionManager !== 'undefined') {
-    SessionManager.init(<?= (int)(getSystemSetting('session_timeout', '30')) ?>);
+    SessionManager.init(<?= (int)(getSystemSetting('session_lifetime', '120')) ?>);
 }
+
+// Global AJAX session-expiry interceptor
+(function(){
+    const origFetch = window.fetch;
+    window.fetch = function(...args) {
+        return origFetch.apply(this, args).then(resp => {
+            if (resp.ok) {
+                const ct = resp.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const cloned = resp.clone();
+                    cloned.json().then(data => {
+                        if (data && data.session_expired) {
+                            Toast.error('انتهت جلستك. جارٍ التحويل لتسجيل الدخول...');
+                            setTimeout(() => { window.location.href = window.SITE_URL + '/admin/login.php'; }, 1500);
+                        }
+                    }).catch(() => {});
+                }
+            }
+            return resp;
+        });
+    };
+})();
 
 // Clock
 function tick(){

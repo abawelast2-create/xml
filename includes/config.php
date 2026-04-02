@@ -91,13 +91,25 @@ if (file_exists($_bootstrapFile)) {
     require_once $_bootstrapFile;
 }
 
-// ================== Session Timeout (30 min idle) ==================
+// ================== Session Timeout (configurable) ==================
 if (!empty($_SESSION['admin_id'])) {
-    $idleTimeout = 1800; // 30 دقيقة
+    // جلب مهلة الجلسة من الإعدادات (بالدقائق) — افتراضي 120 دقيقة
+    $idleTimeoutMin = 120;
+    try {
+        $stk = db()->query("SELECT setting_value FROM settings WHERE setting_key = 'session_lifetime'")->fetchColumn();
+        if ($stk) $idleTimeoutMin = max(5, (int)$stk);
+    } catch (Exception $e) {}
+    $idleTimeout = $idleTimeoutMin * 60;
     if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $idleTimeout) {
         // انتهاء مهلة الجلسة — تسجيل خروج تلقائي
         session_unset();
         session_destroy();
+        // AJAX request — return JSON redirect
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['session_expired' => true, 'redirect' => '/admin/login.php']);
+            exit;
+        }
         if (session_status() === PHP_SESSION_NONE) session_start();
         $_SESSION['flash_error'] = 'انتهت جلستك بسبب عدم النشاط. يرجى تسجيل الدخول مجدداً.';
     } else {

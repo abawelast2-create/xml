@@ -146,8 +146,9 @@ function recordAttendance(int $employeeId, string $type, float $lat, float $lon,
     $ip        = getClientIP();
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
-    // حساب دقائق التأخير (عند تسجيل الدخول فقط)
+    // حساب دقائق التأخير والتبكير (عند تسجيل الدخول فقط)
     $lateMinutes = 0;
+    $earlyMinutes = 0;
     if ($type === 'in') {
         $empStmt = db()->prepare("SELECT branch_id FROM employees WHERE id = ?");
         $empStmt->execute([$employeeId]);
@@ -163,17 +164,23 @@ function recordAttendance(int $employeeId, string $type, float $lat, float $lon,
             $workStart = strtotime(date('Y-m-d', strtotime('-1 day')) . ' ' . $referenceTimeStr);
         }
         if ($now > $workStart) {
-            $lateMinutes = max(0, (int)round(($now - $workStart) / 60));
+            $rawLate = max(0, (int)round(($now - $workStart) / 60));
+            // تطبيق فترة السماح (Grace Period)
+            $graceMinutes = (int) getSystemSetting('late_grace_minutes', '0');
+            $lateMinutes = max(0, $rawLate - $graceMinutes);
+        } elseif ($now < $workStart) {
+            // حساب دقائق التبكير
+            $earlyMinutes = max(0, (int)round(($workStart - $now) / 60));
         }
     }
 
     $stmt = db()->prepare("
-        INSERT INTO attendances (employee_id, type, timestamp, attendance_date, late_minutes, latitude, longitude, location_accuracy, ip_address, user_agent)
-        VALUES (?, ?, NOW(), CURDATE(), ?, ?, ?, ?, ?, ?)
+        INSERT INTO attendances (employee_id, type, timestamp, attendance_date, late_minutes, early_minutes, latitude, longitude, location_accuracy, ip_address, user_agent)
+        VALUES (?, ?, NOW(), CURDATE(), ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->execute([$employeeId, $type, $lateMinutes, $lat, $lon, $accuracy, $ip, $userAgent]);
+    $stmt->execute([$employeeId, $type, $lateMinutes, $earlyMinutes, $lat, $lon, $accuracy, $ip, $userAgent]);
 
-    return ['success' => true, 'message' => $type === 'in' ? 'تم تسجيل الدخول بنجاح' : 'تم تسجيل الانصراف بنجاح', 'late_minutes' => $lateMinutes];
+    return ['success' => true, 'message' => $type === 'in' ? 'تم تسجيل الدخول بنجاح' : 'تم تسجيل الانصراف بنجاح', 'late_minutes' => $lateMinutes, 'early_minutes' => $earlyMinutes];
 }
 
 /**

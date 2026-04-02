@@ -79,8 +79,9 @@ $geoCheck = isWithinGeofence($lat, $lon, $employee['branch_id'] ?? null);
 if (!$geoCheck['allowed']) {
     jsonResponse([
         'success'  => false,
-        'message'  => $geoCheck['message'],
-        'distance' => $geoCheck['distance']
+        'message'  => "⛔ لا يمكن تسجيل الحضور من خارج نطاق العمل.\n\n📍 المسافة الحالية: {$geoCheck['distance']} متر\n📏 الحد المسموح: {$geoCheck['radius']} متر\n\nيرجى التوجه إلى مقر العمل والمحاولة مجدداً.",
+        'distance' => $geoCheck['distance'],
+        'radius'   => $geoCheck['radius']
     ], 200);
 }
 

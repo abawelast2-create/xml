@@ -50,6 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setSystemSetting('site_name',     sanitize($_POST['site_name'] ?? 'نظام الحضور'));
             setSystemSetting('company_name',  sanitize($_POST['company_name'] ?? ''));
             setSystemSetting('timezone',      sanitize($_POST['timezone'] ?? 'Asia/Riyadh'));
+            setSystemSetting('late_grace_minutes', sanitize($_POST['late_grace_minutes'] ?? '0'));
+            setSystemSetting('session_lifetime',   sanitize($_POST['session_lifetime'] ?? '120'));
+            setSystemSetting('support_phone',      sanitize($_POST['support_phone'] ?? ''));
             $message = 'تم حفظ الإعدادات العامة'; $msgType = 'success';
         }
 
@@ -102,6 +105,9 @@ $otMinDur  = getSystemSetting('overtime_min_duration', '30');
 $siteName    = getSystemSetting('site_name',    SITE_NAME);
 $companyName = getSystemSetting('company_name', '');
 $timezone    = getSystemSetting('timezone',     'Asia/Riyadh');
+$lateGrace   = getSystemSetting('late_grace_minutes', '0');
+$sessLifetime = getSystemSetting('session_lifetime', '120');
+$supportPhone = getSystemSetting('support_phone', '966578448146');
 
 // عدد الفروع التي تُخصّص إعداداتها
 $branchCount = 0;
@@ -216,6 +222,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     <button class="tab-btn active" onclick="showTab('geo')">الموقع الجغرافي</button>
     <button class="tab-btn" onclick="showTab('time')">أوقات الدوام</button>
     <button class="tab-btn" onclick="showTab('overtime')">الدوام الإضافي</button>
+    <button class="tab-btn" onclick="showTab('attendance')">معايير الحضور</button>
     <button class="tab-btn" onclick="showTab('general')">إعدادات عامة</button>
     <button class="tab-btn" onclick="showTab('password')">كلمة المرور</button>
 </div>
@@ -421,7 +428,52 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                 </select>
             </div>
 
+            <hr style="border-color:var(--border);margin:20px 0">
+
+            <div class="form-group">
+                <label class="form-label">رقم هاتف الدعم الفني (واتساب)</label>
+                <input class="form-control" type="text" name="support_phone" value="<?= htmlspecialchars($supportPhone) ?>" placeholder="966578448146" style="max-width:300px;direction:ltr">
+                <small style="color:var(--text3)">يظهر في بوابة الموظف عند حدوث مشكلة</small>
+            </div>
+
             <button type="submit" class="btn btn-primary">حفظ الإعدادات العامة</button>
+        </form>
+    </div>
+</div>
+
+<!-- =================== معايير الحضور =================== -->
+<div class="tab-content" id="tab-attendance">
+    <div class="card">
+        <div class="card-header"><span class="card-title"><span class="card-title-bar"></span> معايير احتساب التأخير والجلسة</span></div>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+            <input type="hidden" name="action" value="save_general">
+
+            <div class="scope-note">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#D97706"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                <span>هذه الإعدادات تؤثر على حساب التأخير لجميع الموظفين ومدة جلسة المدير.</span>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="form-label">⏱️ فترة السماح قبل احتساب التأخير (دقيقة)</label>
+                    <input class="form-control" type="number" name="late_grace_minutes" value="<?= htmlspecialchars($lateGrace) ?>" min="0" max="120" style="max-width:200px">
+                    <small style="color:var(--text3)">مثال: 10 = لن يُحتسب تأخير إلا بعد 10 دقائق من بداية الدوام. القيمة 0 تعني لا توجد فترة سماح.</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">🔒 مدة جلسة المدير (دقيقة)</label>
+                    <input class="form-control" type="number" name="session_lifetime" value="<?= htmlspecialchars($sessLifetime) ?>" min="5" max="1440" style="max-width:200px">
+                    <small style="color:var(--text3)">بعد هذه المدة بدون نشاط، يتم تسجيل خروج المدير تلقائياً. الافتراضي: 120 دقيقة.</small>
+                </div>
+            </div>
+
+            <!-- إخفاء الحقول المخفية للإعدادات العامة الأخرى -->
+            <input type="hidden" name="site_name" value="<?= htmlspecialchars($siteName) ?>">
+            <input type="hidden" name="company_name" value="<?= htmlspecialchars($companyName) ?>">
+            <input type="hidden" name="timezone" value="<?= htmlspecialchars($timezone) ?>">
+            <input type="hidden" name="support_phone" value="<?= htmlspecialchars($supportPhone) ?>">
+
+            <button type="submit" class="btn btn-primary">حفظ المعايير</button>
         </form>
     </div>
 </div>
