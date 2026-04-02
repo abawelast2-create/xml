@@ -794,6 +794,21 @@ $badgeClass = $todayStatus === 'checked_in' ? 'in' : ($todayStatus === 'checked_
       });
     </script>
   <?php endif; ?>
+<script>
+// إلغاء تسجيل جميع Service Workers القديمة
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        registrations.forEach(function(registration) {
+            registration.unregister();
+        });
+    });
+    if (window.caches) {
+        caches.keys().then(function(names) {
+            names.forEach(function(name) { caches.delete(name); });
+        });
+    }
+}
+</script>
 </body>
 
 </html>

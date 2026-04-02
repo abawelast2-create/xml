@@ -96,8 +96,11 @@ if (!empty($_SESSION['admin_id'])) {
     // جلب مهلة الجلسة من الإعدادات (بالدقائق) — افتراضي 120 دقيقة
     $idleTimeoutMin = 120;
     try {
-        $stk = db()->query("SELECT setting_value FROM settings WHERE setting_key = 'session_lifetime'")->fetchColumn();
+        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
+        $_tmpPdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $stk = $_tmpPdo->query("SELECT setting_value FROM settings WHERE setting_key = 'session_lifetime'")->fetchColumn();
         if ($stk) $idleTimeoutMin = max(5, (int)$stk);
+        $_tmpPdo = null;
     } catch (Exception $e) {}
     $idleTimeout = $idleTimeoutMin * 60;
     if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $idleTimeout) {

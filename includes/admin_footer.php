@@ -81,4 +81,19 @@ setInterval(updateNotifBadge, 30000);
     Toast.error(<?= json_encode($_SESSION['flash_error']) ?>);
     <?php unset($_SESSION['flash_error']); ?>
 <?php endif; ?>
+
+// إلغاء تسجيل جميع Service Workers القديمة
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        registrations.forEach(function(registration) {
+            registration.unregister();
+        });
+    });
+    // مسح جميع الكاش
+    if (window.caches) {
+        caches.keys().then(function(names) {
+            names.forEach(function(name) { caches.delete(name); });
+        });
+    }
+}
 </script>
