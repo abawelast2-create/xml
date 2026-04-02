@@ -20,10 +20,6 @@ $today = date('Y-m-d');
 $branchCount = (int)db()->query("SELECT COUNT(*) FROM branches WHERE is_active = 1")->fetchColumn();
 
 // المتأخرون اليوم
-$lateCount = (int)db()->prepare("
-    SELECT COUNT(DISTINCT employee_id) FROM attendances
-    WHERE attendance_date = ? AND type = 'in' AND late_minutes > 0
-")->execute([$today]) ? 0 : 0;
 $lateStmt = db()->prepare("SELECT COUNT(DISTINCT employee_id) FROM attendances WHERE attendance_date = ? AND type = 'in' AND late_minutes > 0");
 $lateStmt->execute([$today]);
 $lateCount = (int)$lateStmt->fetchColumn();

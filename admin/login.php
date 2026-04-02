@@ -32,7 +32,7 @@ try {
 }
 $isLocked = ($attempts >= $maxAttempts);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if ($isLocked) {
         // حساب الوقت المتبقي
         try {

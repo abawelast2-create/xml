@@ -50,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
     $newTimestamp = $editDate . ' ' . $editTime . ':00';
 
     // إعادة حساب التأخير والتبكير تلقائياً عند تعديل وقت الدخول
+    $editEarly = 0;
     if ($editType === 'in') {
         // جلب الموظف والفرع
         $empStmt = db()->prepare("SELECT employee_id FROM attendances WHERE id = ?");
@@ -159,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['manual_add'])) {
         }
     }
 
-    db()->prepare("INSERT INTO attendances (employee_id, type, timestamp, attendance_date, late_minutes, early_minutes, notes, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    db()->prepare("INSERT INTO attendances (employee_id, type, timestamp, attendance_date, late_minutes, early_minutes, latitude, longitude, notes, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)")
         ->execute([$manualEmpId, $manualType, $ts, $manualDate, $lateMin, $earlyMin, $manualNotes ?: 'إضافة يدوية', $_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_USER_AGENT'] ?? '']);
     auditLog('manual_attendance', "إضافة حضور يدوي: emp={$manualEmpId}, type={$manualType}, date={$manualDate}", $manualEmpId);
     echo json_encode(['success' => true, 'message' => 'تم إضافة السجل بنجاح']);
