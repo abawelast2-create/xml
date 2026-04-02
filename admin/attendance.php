@@ -224,11 +224,13 @@ $branchList = db()->query("SELECT id, name FROM branches WHERE is_active=1 ORDER
 // إحصائيات الفترة
 $statsStmt = db()->prepare("
     SELECT
-        COUNT(CASE WHEN type='in' THEN 1 END)  AS total_in,
-        COUNT(CASE WHEN type='out' THEN 1 END) AS total_out,
-        COUNT(DISTINCT employee_id)             AS unique_employees,
-        COUNT(DISTINCT attendance_date)          AS working_days
-    FROM attendances a WHERE $whereStr
+        COUNT(CASE WHEN a.type='in' THEN 1 END)  AS total_in,
+        COUNT(CASE WHEN a.type='out' THEN 1 END) AS total_out,
+        COUNT(DISTINCT a.employee_id)             AS unique_employees,
+        COUNT(DISTINCT a.attendance_date)          AS working_days
+    FROM attendances a
+    JOIN employees e ON a.employee_id = e.id
+    WHERE $whereStr
 ");
 $statsStmt->execute($params);
 $periodStats = $statsStmt->fetch();
