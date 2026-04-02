@@ -29,8 +29,8 @@ $branchList = db()->query("SELECT id, name FROM branches WHERE is_active=1 ORDER
 $shiftTimeCond = '';
 $shiftTimeParams = [];
 if ($filterShift > 0) {
-    $sf = buildShiftTimeFilter($filterShift);
-    if ($sf) { $shiftTimeCond = "AND " . str_replace('a.timestamp', 'timestamp', $sf['sql']); $shiftTimeParams = $sf['params']; }
+    $sf = buildShiftTimeFilter($filterShift, '');
+    if ($sf) { $shiftTimeCond = "AND " . $sf['sql']; $shiftTimeParams = $sf['params']; }
 }
 
 // =========================================================

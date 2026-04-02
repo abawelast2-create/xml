@@ -14,13 +14,38 @@ $activePage = 'report-branches';
 
 $dateFrom = $_GET['date_from'] ?? date('Y-m-01');
 $dateTo   = $_GET['date_to']   ?? date('Y-m-d');
+$filterShiftNum = (int)($_GET['shift_num'] ?? 0);
 
 $branches = db()->query("SELECT id, name FROM branches WHERE is_active = 1 ORDER BY name")->fetchAll();
+
+// تجهيز ورديات كل فرع حسب رقم الوردية المختار
+$branchShiftMap = [];
+if ($filterShiftNum > 0) {
+    $bsStmt = db()->prepare("SELECT id, branch_id FROM branch_shifts WHERE shift_number = ? AND is_active = 1");
+    $bsStmt->execute([$filterShiftNum]);
+    foreach ($bsStmt->fetchAll() as $bs) {
+        $branchShiftMap[(int)$bs['branch_id']] = (int)$bs['id'];
+    }
+}
+
+// أقصى رقم وردية موجود
+$maxShiftNum = (int)db()->query("SELECT MAX(shift_number) FROM branch_shifts WHERE is_active = 1")->fetchColumn();
 
 // بيانات كل فرع
 $branchStats = [];
 foreach ($branches as $b) {
     $bid = $b['id'];
+    
+    // فلتر الوردية لهذا الفرع
+    $shiftTimeCond = '';
+    $shiftTimeParams = [];
+    if ($filterShiftNum > 0 && isset($branchShiftMap[$bid])) {
+        $sf = buildShiftTimeFilter($branchShiftMap[$bid]);
+        if ($sf) {
+            $shiftTimeCond = "AND " . $sf['sql'];
+            $shiftTimeParams = $sf['params'];
+        }
+    }
     
     // عدد الموظفين
     $stmt = db()->prepare("SELECT COUNT(*) FROM employees WHERE branch_id = ? AND is_active = 1 AND deleted_at IS NULL");
@@ -37,8 +62,9 @@ foreach ($branches as $b) {
         JOIN employees e ON a.employee_id = e.id
         WHERE e.branch_id = ? AND a.attendance_date BETWEEN ? AND ?
           AND e.is_active = 1 AND e.deleted_at IS NULL
+          {$shiftTimeCond}
     ");
-    $stmt->execute([$bid, $dateFrom, $dateTo]);
+    $stmt->execute(array_merge([$bid, $dateFrom, $dateTo], $shiftTimeParams));
     $attStats = $stmt->fetch();
 
     // أيام العمل (بدون الجمعة)
@@ -87,6 +113,16 @@ require_once __DIR__ . '/../includes/admin_layout.php';
             <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">إلى</label>
             <input type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>"
                    style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+        </div>
+        <div>
+            <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">الوردية</label>
+            <select name="shift_num"
+                    style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+                <option value="0">كل الورديات</option>
+                <?php for ($sn = 1; $sn <= $maxShiftNum; $sn++): ?>
+                    <option value="<?= $sn ?>" <?= $filterShiftNum === $sn ? 'selected' : '' ?>>الوردية <?= $sn ?></option>
+                <?php endfor; ?>
+            </select>
         </div>
         <button type="submit" class="btn btn-primary" style="padding:8px 20px">عرض</button>
         <button type="button" onclick="window.print()" class="btn btn-secondary" style="padding:8px 16px">🖨️ طباعة</button>

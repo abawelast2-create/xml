@@ -41,16 +41,6 @@ $branchesMap = db()->query("
 ")->fetchAll();
 
 // آخر تسجيلات اليوم مع الإحداثيات (للرادارات الحية)
-$liveCheckins = db()->prepare("
-    SELECT a.latitude, a.longitude, a.type, a.timestamp,
-           e.name AS employee_name, e.branch_id
-    FROM attendances a
-    JOIN employees e ON a.employee_id = e.id
-    WHERE a.attendance_date = ? AND a.type = 'in'
-      AND a.latitude IS NOT NULL AND a.longitude IS NOT NULL
-      AND e.is_active = 1 AND e.deleted_at IS NULL
-    ORDER BY a.timestamp DESC
-")->execute([$today]) ? [] : [];
 $liveStmt = db()->prepare("
     SELECT a.latitude, a.longitude, a.type, a.timestamp,
            e.name AS employee_name, e.branch_id

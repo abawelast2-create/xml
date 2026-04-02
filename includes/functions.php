@@ -444,14 +444,16 @@ function buildShiftTimeFilter(int $shiftId, string $tableAlias = 'a'): ?array {
     $wsTime = sprintf('%02d:%02d:00', intdiv($windowStart, 60), $windowStart % 60);
     $weTime = sprintf('%02d:%02d:00', intdiv($windowEnd, 60), $windowEnd % 60);
 
+    $col = $tableAlias === '' ? 'TIME(timestamp)' : "TIME({$tableAlias}.timestamp)";
+
     if ($windowStart < $windowEnd) {
         return [
-            'sql' => "TIME({$tableAlias}.timestamp) BETWEEN ? AND ?",
+            'sql' => "{$col} BETWEEN ? AND ?",
             'params' => [$wsTime, $weTime]
         ];
     } else {
         return [
-            'sql' => "(TIME({$tableAlias}.timestamp) >= ? OR TIME({$tableAlias}.timestamp) <= ?)",
+            'sql' => "({$col} >= ? OR {$col} <= ?)",
             'params' => [$wsTime, $weTime]
         ];
     }

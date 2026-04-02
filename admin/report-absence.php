@@ -39,7 +39,7 @@ $employees = $empStmt->fetchAll();
 $shiftTimeCond = '';
 $shiftTimeParams = [];
 if ($filterShift > 0) {
-    $sf = buildShiftTimeFilter($filterShift);
+    $sf = buildShiftTimeFilter($filterShift, '');
     if ($sf) { $shiftTimeCond = "AND " . $sf['sql']; $shiftTimeParams = $sf['params']; }
 }
 
