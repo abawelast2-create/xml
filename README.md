@@ -1,75 +1,52 @@
-<?php
-// =============================================================
-// api/tile.php - Map tile proxy to avoid CORS issues
-// Proxies ArcGIS tile requests through our server
-// =============================================================
+# نظام الحضور والانصراف — Attendance System
 
-// Validate parameters
-$z = filter_input(INPUT_GET, 'z', FILTER_VALIDATE_INT);
-$y = filter_input(INPUT_GET, 'y', FILTER_VALIDATE_INT);
-$x = filter_input(INPUT_GET, 'x', FILTER_VALIDATE_INT);
-$layer = filter_input(INPUT_GET, 'l', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'satellite';
+نظام ويب متكامل لتسجيل حضور وانصراف الموظفين عبر الهاتف الذكي، يعتمد على الموقع الجغرافي (GPS) وبصمة الجهاز الرقمية.
 
-if ($z === false || $z === null || $y === false || $y === null || $x === false || $x === null) {
-    http_response_code(400);
-    exit;
-}
+## المميزات الرئيسية
 
-// Restrict zoom levels (0-19)
-if ($z < 0 || $z > 19 || $y < 0 || $x < 0) {
-    http_response_code(400);
-    exit;
-}
+- **تسجيل بالموقع الجغرافي (Geofencing)** — لا يمكن التسجيل إلا من داخل نطاق العمل
+- **فروع متعددة بنوبات عمل مرنة** — كل فرع له إحداثياته ونوباته الخاصة
+- **ربط الجهاز (3 أوضاع)** — حر / صارم / مراقبة صامتة
+- **كشف التلاعب التلقائي** — تسجيل بالنيابة، أجهزة مختلفة، مع سجل كامل
+- **تقارير شاملة** — يومي، شهري، تأخير، انصراف مبكر، غياب، مقارنة الفروع، رسوم بيانية
+- **إدارة الإجازات** — طلب وموافقة ورفض مع أنواع متعددة
+- **نقل الموظفين** — تحويل بين الفروع مع سجل كامل
+- **نظام الإشعارات** — تنبيهات داخلية للمشرف
+- **نسخ احتياطي** — تصدير واستعادة قاعدة البيانات
+- **سجل المراجعة** — تتبع جميع عمليات الإدارة
+- **بلاغات سرية** — زر عائم للموظفين لإرسال بلاغات مع نص/صور/صوت
+- **وضع مظلم** — دعم كامل للوضع الليلي
+- **واجهة عربية RTL** — تصميم برتقالي عصري
+- **خريطة تفاعلية + رادار GPS** — مع صوت سونار
+- **PWA** — تطبيق ويب تقدمي مع Service Worker
+- **خروج تلقائي** — عبر Cron Job
 
-// Only allow known layer types
-$layers = [
-    'satellite' => 'World_Imagery',
-    'street'    => 'World_Street_Map',
-];
-$service = $layers[$layer] ?? $layers['satellite'];
+## التقنيات
 
-// Build upstream URL
-$url = "https://server.arcgisonline.com/ArcGIS/rest/services/{$service}/MapServer/tile/{$z}/{$y}/{$x}";
+| المكوّن | التقنية |
+|---------|---------|
+| لغة الخادم | PHP 8.x |
+| قاعدة البيانات | MySQL / MariaDB |
+| الواجهة | HTML5 + CSS3 + JavaScript (Vanilla) |
+| الخرائط | Leaflet.js + ArcGIS Tiles |
+| الخطوط | Tajawal (Google Fonts) |
 
-// Cache directory
-$cacheDir = __DIR__ . '/../cache/tiles/' . $layer . '/' . $z . '/' . $y;
-$cacheFile = $cacheDir . '/' . $x . '.jpg';
+## التثبيت السريع
 
-// Serve from cache if exists and fresh (30 days)
-if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 2592000) {
-    header('Content-Type: image/jpeg');
-    header('Cache-Control: public, max-age=2592000');
-    header('X-Tile-Cache: HIT');
-    readfile($cacheFile);
-    exit;
-}
+1. ارفع الملفات إلى الاستضافة
+2. عدّل `includes/config.php` ببيانات قاعدة البيانات
+3. افتح `install.php` لإنشاء الجداول
+4. ادخل من `/admin/login.php` — المستخدم: `admin` / كلمة المرور: `Admin@1234`
+5. غيّر كلمة المرور فوراً من الإعدادات
 
-// Fetch from upstream
-$ch = curl_init($url);
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_TIMEOUT        => 10,
-    CURLOPT_FOLLOWLOCATION => true,
-    CURLOPT_USERAGENT      => 'AttendanceSystem/1.0',
-]);
-$data = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-curl_close($ch);
+## التوثيق
 
-if ($httpCode !== 200 || empty($data)) {
-    http_response_code(502);
-    exit;
-}
+التوثيق الكامل في مجلد [`docs/`](docs/README.md)
 
-// Cache tile to disk
-if (!is_dir($cacheDir)) {
-    @mkdir($cacheDir, 0755, true);
-}
-@file_put_contents($cacheFile, $data);
+## الإصدار
 
-// Serve
-header('Content-Type: ' . ($contentType ?: 'image/jpeg'));
-header('Cache-Control: public, max-age=2592000');
-header('X-Tile-Cache: MISS');
-echo $data;
+**v4.0** — أبريل 2026
+
+## الرخصة
+
+جميع الحقوق محفوظة.
