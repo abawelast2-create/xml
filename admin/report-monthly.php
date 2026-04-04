@@ -58,8 +58,6 @@ $shiftTimeParams = [];
 if ($filterShift > 0) {
     $sf = buildShiftTimeFilter($filterShift);
     if ($sf) { $shiftTimeCond = "AND " . $sf['sql']; $shiftTimeParams = $sf['params']; }
-} else {
-    $shiftTimeCond = "AND 1=0";
 }
 
 $attStmt = db()->prepare("
@@ -125,8 +123,8 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         </div>
         <div>
             <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">الوردية</label>
-            <select name="shift" id="shiftSelect" style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)" required>
-                <option value="">-- اختر الوردية --</option>
+            <select name="shift" id="shiftSelect" style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+                <option value="0">كل الورديات</option>
             </select>
         </div>
         <div>
@@ -285,7 +283,7 @@ foreach ($employees as $emp) {
     const curShift = <?= $filterShift ?>;
     function updateShifts(){
         const bid = branchSel ? branchSel.value : 0;
-        shiftSel.innerHTML = '<option value="">-- اختر الوردية --</option>';
+        shiftSel.innerHTML = '<option value="0">كل الورديات</option>';
         if(bid && branchShifts[bid]){
             branchShifts[bid].forEach(s=>{
                 const o = document.createElement('option');
@@ -296,7 +294,7 @@ foreach ($employees as $emp) {
             });
         }
     }
-    if(branchSel) branchSel.addEventListener('change', ()=>{ shiftSel.value = ''; updateShifts(); });
+    if(branchSel) branchSel.addEventListener('change', ()=>{ shiftSel.value = 0; updateShifts(); });
     updateShifts();
 })();
 </script>

@@ -31,8 +31,6 @@ $shiftTimeParams = [];
 if ($filterShift > 0) {
     $sf = buildShiftTimeFilter($filterShift);
     if ($sf) { $shiftTimeCond = "AND " . $sf['sql']; $shiftTimeParams = $sf['params']; }
-} else {
-    $shiftTimeCond = "AND 1=0";
 }
 
 // =================== إحصائيات الفترة ===================
@@ -188,8 +186,8 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         </div>
         <div class="form-group">
             <label>الوردية</label>
-            <select name="shift" id="shiftSelect" class="form-control" required>
-                <option value="">-- اختر الوردية --</option>
+            <select name="shift" id="shiftSelect" class="form-control">
+                <option value="0">كل الورديات</option>
             </select>
         </div>
         <div class="filter-actions">
@@ -439,7 +437,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     const curShift = <?= $filterShift ?>;
     function updateShifts(){
         const bid = branchSel ? branchSel.value : 0;
-        shiftSel.innerHTML = '<option value="">-- اختر الوردية --</option>';
+        shiftSel.innerHTML = '<option value="0">كل الورديات</option>';
         if(bid && branchShifts[bid]){
             branchShifts[bid].forEach(s=>{
                 const o = document.createElement('option');
@@ -450,7 +448,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
             });
         }
     }
-    if(branchSel) branchSel.addEventListener('change', ()=>{ shiftSel.value = ''; updateShifts(); });
+    if(branchSel) branchSel.addEventListener('change', ()=>{ shiftSel.value = 0; updateShifts(); });
     updateShifts();
 })();
 </script>

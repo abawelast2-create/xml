@@ -37,7 +37,7 @@ foreach ($branches as $b) {
     $bid = $b['id'];
     
     // فلتر الوردية لهذا الفرع
-    $shiftTimeCond = ($filterShiftNum === 0) ? 'AND 1=0' : '';
+    $shiftTimeCond = '';
     $shiftTimeParams = [];
     if ($filterShiftNum > 0 && isset($branchShiftMap[$bid])) {
         $sf = buildShiftTimeFilter($branchShiftMap[$bid]);
@@ -114,8 +114,8 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         </div>
         <div class="form-group">
             <label>الوردية</label>
-            <select name="shift_num" class="form-control" required>
-                <option value="">-- اختر الوردية --</option>
+            <select name="shift_num" class="form-control">
+                <option value="0">كل الورديات</option>
                 <?php for ($sn = 1; $sn <= $maxShiftNum; $sn++): ?>
                     <option value="<?= $sn ?>" <?= $filterShiftNum === $sn ? 'selected' : '' ?>>الوردية <?= $sn ?></option>
                 <?php endfor; ?>
