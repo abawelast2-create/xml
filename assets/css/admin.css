@@ -629,3 +629,218 @@ hr { border:none; border-top:1px solid var(--border); margin:20px 0; }
     from { background:var(--primary-l); opacity:0; transform:translateX(10px); }
     to { background:transparent; opacity:1; transform:translateX(0); }
 }
+
+/* =============================================================
+   Report Pages — Modern Enhancements
+   ============================================================= */
+
+/* ── Filter Card ── */
+.report-filter {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:22px 24px;
+    margin-bottom:24px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+}
+.report-filter::before {
+    content:'';
+    position:absolute; top:0; right:0; left:0; height:3px;
+    background:linear-gradient(90deg, var(--primary), var(--primary-d), var(--primary));
+    border-radius:3px 3px 0 0;
+}
+.report-filter .filter-bar {
+    display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end;
+}
+.report-filter .filter-bar .form-group { margin-bottom:0; }
+.report-filter .filter-bar label {
+    font-size:.76rem; font-weight:700; color:var(--text3);
+    text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:5px; display:block;
+}
+.report-filter .filter-bar .form-control {
+    border-radius:8px; padding:9px 12px; font-size:.85rem;
+    background:var(--surface2);
+    border:1.5px solid var(--border);
+}
+.report-filter .filter-bar .form-control:focus {
+    background:var(--surface);
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(232,114,42,.1);
+}
+.report-filter .filter-actions {
+    display:flex; gap:8px; align-items:center;
+}
+
+/* ── Report Stats / Summary Row ── */
+.report-stats {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:16px;
+    margin-bottom:24px;
+}
+.report-stat {
+    position:relative;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:20px;
+    display:flex; align-items:center; gap:14px;
+    box-shadow:var(--shadow);
+    transition:transform .2s, box-shadow .2s;
+    overflow:hidden;
+}
+.report-stat:hover {
+    transform:translateY(-2px);
+    box-shadow:var(--shadow-md);
+}
+.report-stat-icon {
+    width:48px; height:48px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; font-size:1.4rem;
+}
+.report-stat-icon.is-orange { background:var(--primary-l); color:var(--primary-d); }
+.report-stat-icon.is-blue   { background:var(--blue-l);    color:var(--blue); }
+.report-stat-icon.is-green  { background:var(--green-l);   color:var(--green); }
+.report-stat-icon.is-red    { background:var(--red-l);     color:var(--red); }
+.report-stat-icon.is-purple { background:var(--purple-l);  color:var(--purple); }
+.report-stat-icon.is-yellow { background:var(--yellow-l);  color:var(--yellow); }
+.report-stat-value {
+    font-size:1.7rem; font-weight:800; color:var(--text);
+    line-height:1; letter-spacing:-.02em;
+}
+.report-stat-label {
+    font-size:.76rem; color:var(--text3); margin-top:3px;
+}
+.report-stat::after {
+    content:''; position:absolute; top:0; right:0; width:4px; height:100%;
+    border-radius:0 4px 4px 0; opacity:.5;
+}
+.report-stat.accent-orange::after { background:var(--primary); }
+.report-stat.accent-blue::after   { background:var(--blue); }
+.report-stat.accent-green::after  { background:var(--green); }
+.report-stat.accent-red::after    { background:var(--red); }
+.report-stat.accent-purple::after { background:var(--purple); }
+
+/* ── Report Table ── */
+.report-table-wrap {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    margin-bottom:22px;
+}
+.report-table-wrap table { margin:0; }
+.report-table-wrap thead th {
+    background:linear-gradient(180deg, var(--surface3) 0%, var(--surface2) 100%);
+    position:sticky; top:0; z-index:2;
+    font-size:.76rem; text-transform:uppercase; letter-spacing:.04em;
+}
+.report-table-wrap tbody td { font-size:.84rem; }
+.report-table-wrap tbody tr:nth-child(even) { background:var(--surface2); }
+.report-table-wrap tbody tr:hover { background:var(--primary-xl); }
+
+/* ── Rank Badges (early report) ── */
+.rank-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:4px 12px; border-radius:20px;
+    font-size:.75rem; font-weight:700;
+}
+.rank-badge.gold   { background:linear-gradient(135deg, #FEF3C7, #FDE68A); color:#92400E; border:1px solid #FCD34D; }
+.rank-badge.silver { background:linear-gradient(135deg, #F1F5F9, #E2E8F0); color:#475569; border:1px solid #CBD5E1; }
+.rank-badge.bronze { background:linear-gradient(135deg, #FED7AA, #FDBA74); color:#9A3412; border:1px solid #FB923C; }
+
+/* ── Chart Cards ── */
+.chart-card {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:20px;
+    box-shadow:var(--shadow);
+    transition:box-shadow .2s;
+}
+.chart-card:hover { box-shadow:var(--shadow-md); }
+.chart-card-title {
+    font-size:.92rem; font-weight:700; color:var(--text);
+    margin-bottom:16px; padding-bottom:12px;
+    border-bottom:2px solid var(--surface3);
+    display:flex; align-items:center; gap:8px;
+}
+.chart-card-title svg { color:var(--primary); }
+
+/* ── Severity Badges (absence) ── */
+.severity-low    { background:var(--yellow-l); color:var(--yellow); }
+.severity-medium { background:var(--primary-l); color:var(--primary-d); }
+.severity-high   { background:var(--red-l);    color:var(--red); }
+
+/* ── Monthly Calendar Table ── */
+.monthly-table-wrap { overflow-x:auto; }
+.monthly-table-wrap table { min-width:800px; }
+.monthly-table-wrap th { white-space:nowrap; min-width:32px; }
+.monthly-table-wrap td { text-align:center; padding:6px 4px; }
+.monthly-table-wrap .day-present { background:var(--green-l); color:var(--green); font-weight:700; border-radius:6px; }
+.monthly-table-wrap .day-absent  { background:var(--red-l);   color:var(--red);   font-weight:700; border-radius:6px; }
+.monthly-table-wrap .day-late    { background:var(--yellow-l); color:var(--yellow); font-weight:700; border-radius:6px; }
+.monthly-table-wrap .day-leave   { background:var(--blue-l);  color:var(--blue);  font-weight:700; border-radius:6px; }
+.monthly-table-wrap .day-holiday { background:var(--surface3); color:var(--text3); border-radius:6px; }
+
+/* ── Export Button ── */
+.btn-export {
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--green-l); color:var(--green);
+    padding:8px 16px; border-radius:10px;
+    font-size:.82rem; font-weight:600;
+    text-decoration:none; border:1px solid #A7F3D0;
+    transition:all .2s;
+}
+.btn-export:hover { background:var(--green); color:#fff; }
+.btn-export svg { width:16px; height:16px; }
+
+/* ── Report Page header ── */
+.report-header {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:20px; flex-wrap:wrap; gap:12px;
+}
+.report-title {
+    font-size:1.15rem; font-weight:800; color:var(--text);
+    display:flex; align-items:center; gap:10px;
+}
+.report-title svg { color:var(--primary); }
+
+/* ── Empty State ── */
+.report-empty {
+    text-align:center; padding:60px 20px; color:var(--text3);
+}
+.report-empty svg { width:64px; height:64px; margin-bottom:16px; opacity:.3; }
+.report-empty p { font-size:.9rem; font-weight:500; }
+
+/* ── Responsive report enhancements ── */
+@media (max-width: 768px) {
+    .report-filter { padding:14px 12px; }
+    .report-stats { grid-template-columns:1fr 1fr; gap:10px; }
+    .report-stat { padding:14px 12px; }
+    .report-stat-icon { width:40px; height:40px; }
+    .report-stat-value { font-size:1.3rem; }
+    .report-header { flex-direction:column; align-items:stretch; }
+    .chart-card { padding:14px; }
+}
+@media (max-width: 480px) {
+    .report-stats { grid-template-columns:1fr; gap:8px; }
+    .report-stat { padding:12px 10px; }
+    .report-stat-value { font-size:1.15rem; }
+    .report-stat-icon { width:36px; height:36px; border-radius:10px; }
+}
+
+/* ── Theme toggle cleanup ── */
+.theme-toggle {
+    background:var(--surface3); border:1px solid var(--border);
+    width:36px; height:36px; border-radius:10px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all .2s; font-size:1rem; line-height:1;
+}
+.theme-toggle:hover { background:var(--border); }
+html:not(.dark) .icon-sun  { display:none; }
+html.dark        .icon-moon { display:none; }

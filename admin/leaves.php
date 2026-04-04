@@ -70,10 +70,6 @@ $totalRecords = (int)$countStmt->fetchColumn();
 $totalPages = max(1, ceil($totalRecords / $perPage));
 
 // =================== Fetch Leaves ===================
-$fetchParams = $countParams;
-$fetchParams[] = $perPage;
-$fetchParams[] = $offset;
-
 $leavesStmt = db()->prepare("
     SELECT l.*, e.name AS emp_name, e.job_title, b.name AS branch_name,
            a.username AS approved_by_name
@@ -87,7 +83,10 @@ $leavesStmt = db()->prepare("
         l.created_at DESC
     LIMIT ? OFFSET ?
 ");
-$leavesStmt->execute($fetchParams);
+foreach ($countParams as $i => $v) { $leavesStmt->bindValue($i + 1, $v); }
+$leavesStmt->bindValue(count($countParams) + 1, $perPage, PDO::PARAM_INT);
+$leavesStmt->bindValue(count($countParams) + 2, $offset, PDO::PARAM_INT);
+$leavesStmt->execute();
 $leaves = $leavesStmt->fetchAll();
 
 // =================== Pending Count ===================

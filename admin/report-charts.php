@@ -165,114 +165,110 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
 
 <!-- Filters -->
-<div class="card" style="margin-bottom:20px;padding:16px">
-    <form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-        <div>
-            <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">من تاريخ</label>
-            <input type="date" name="date_from" value="<?= htmlspecialchars($dateFrom) ?>"
-                   style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.9rem;background:var(--surface2,#F8FAFC);color:var(--text-primary,#1E293B)">
+<div class="report-filter">
+    <form method="GET" class="filter-bar">
+        <div class="form-group">
+            <label>من تاريخ</label>
+            <input type="date" name="date_from" value="<?= htmlspecialchars($dateFrom) ?>" class="form-control">
         </div>
-        <div>
-            <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">إلى تاريخ</label>
-            <input type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>"
-                   style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.9rem;background:var(--surface2,#F8FAFC);color:var(--text-primary,#1E293B)">
+        <div class="form-group">
+            <label>إلى تاريخ</label>
+            <input type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>" class="form-control">
         </div>
-        <div>
-            <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">الفرع</label>
-            <select name="branch_id" id="branchSelect"
-                    style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.9rem;background:var(--surface2,#F8FAFC);color:var(--text-primary,#1E293B)">
+        <div class="form-group">
+            <label>الفرع</label>
+            <select name="branch_id" id="branchSelect" class="form-control">
                 <option value="">جميع الفروع</option>
                 <?php foreach ($branches as $b): ?>
                     <option value="<?= $b['id'] ?>" <?= $branchId == $b['id'] ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <div>
-            <label style="font-size:.82rem;color:var(--text3);display:block;margin-bottom:4px">الوردية</label>
-            <select name="shift" id="shiftSelect"
-                    style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.9rem;background:var(--surface2,#F8FAFC);color:var(--text-primary,#1E293B)">
+        <div class="form-group">
+            <label>الوردية</label>
+            <select name="shift" id="shiftSelect" class="form-control">
                 <option value="0">كل الورديات</option>
             </select>
         </div>
-        <button type="submit" class="btn btn-primary" style="padding:8px 20px;height:fit-content">
-            تصفية
-        </button>
-        <a href="report-daily.php?date=<?= htmlspecialchars($dateFrom) ?>" class="btn btn-secondary" style="padding:8px 16px;height:fit-content;text-decoration:none">
-            📄 تقرير للطباعة
-        </a>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary"><?= svgIcon('chart', 16) ?> تصفية</button>
+            <a href="report-daily.php?date=<?= htmlspecialchars($dateFrom) ?>" class="btn btn-secondary" style="text-decoration:none"><?= svgIcon('document', 16) ?> تقرير للطباعة</a>
+        </div>
         <div style="display:flex;gap:6px;margin-right:auto">
             <a href="<?= SITE_URL ?>/api/export.php?format=csv&date_from=<?= urlencode($dateFrom) ?>&date_to=<?= urlencode($dateTo) ?><?= $branchId ? '&branch_id='.$branchId : '' ?>"
-               class="btn btn-secondary" style="padding:8px 12px;height:fit-content;text-decoration:none;font-size:.82rem" title="تصدير CSV">📊 CSV</a>
+               class="btn-export" style="padding:6px 10px;font-size:.78rem" title="تصدير CSV"><?= svgIcon('backup', 14) ?> CSV</a>
             <a href="<?= SITE_URL ?>/api/export.php?format=excel&date_from=<?= urlencode($dateFrom) ?>&date_to=<?= urlencode($dateTo) ?><?= $branchId ? '&branch_id='.$branchId : '' ?>"
-               class="btn btn-secondary" style="padding:8px 12px;height:fit-content;text-decoration:none;font-size:.82rem" title="تصدير Excel">📗 Excel</a>
+               class="btn-export" style="padding:6px 10px;font-size:.78rem" title="تصدير Excel"><?= svgIcon('backup', 14) ?> Excel</a>
             <a href="<?= SITE_URL ?>/api/export.php?format=print&date_from=<?= urlencode($dateFrom) ?>&date_to=<?= urlencode($dateTo) ?><?= $branchId ? '&branch_id='.$branchId : '' ?>"
-               target="_blank" class="btn btn-secondary" style="padding:8px 12px;height:fit-content;text-decoration:none;font-size:.82rem" title="طباعة / PDF">🖨️ PDF</a>
+               target="_blank" class="btn btn-secondary" style="padding:6px 10px;font-size:.78rem;text-decoration:none" title="طباعة / PDF"><?= svgIcon('document', 14) ?> PDF</a>
         </div>
     </form>
 </div>
 
 <!-- Stats Cards -->
-<div class="stats-grid" style="margin-bottom:24px">
-    <div class="stat-card">
-        <div class="stat-icon-wrap" style="background:var(--stat-blue-bg,#DBEAFE);color:var(--stat-blue,#2563EB)">📥</div>
+<div class="report-stats">
+    <div class="report-stat accent-blue">
+        <div class="report-stat-icon is-blue"><?= svgIcon('checkin', 24) ?></div>
         <div>
-            <div class="stat-value"><?= number_format($stats['total_check_ins'] ?? 0) ?></div>
-            <div class="stat-label">إجمالي الحضور</div>
+            <div class="report-stat-value"><?= number_format($stats['total_check_ins'] ?? 0) ?></div>
+            <div class="report-stat-label">إجمالي الحضور</div>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon-wrap" style="background:var(--stat-red-bg,#FEE2E2);color:var(--stat-red,#DC2626)">📤</div>
+    <div class="report-stat accent-red">
+        <div class="report-stat-icon is-red"><?= svgIcon('checkout', 24) ?></div>
         <div>
-            <div class="stat-value"><?= number_format($stats['total_check_outs'] ?? 0) ?></div>
-            <div class="stat-label">إجمالي الانصراف</div>
+            <div class="report-stat-value"><?= number_format($stats['total_check_outs'] ?? 0) ?></div>
+            <div class="report-stat-label">إجمالي الانصراف</div>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon-wrap" style="background:var(--stat-green-bg,#D1FAE5);color:var(--stat-green,#059669)">👥</div>
+    <div class="report-stat accent-green">
+        <div class="report-stat-icon is-green"><?= svgIcon('employees', 24) ?></div>
         <div>
-            <div class="stat-value"><?= $stats['unique_employees'] ?? 0 ?></div>
-            <div class="stat-label">موظفين فريدين</div>
+            <div class="report-stat-value"><?= $stats['unique_employees'] ?? 0 ?></div>
+            <div class="report-stat-label">موظفين فريدين</div>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon-wrap" style="background:var(--stat-amber-bg,#FEF3C7);color:var(--stat-amber,#D97706)">⏰</div>
+    <div class="report-stat accent-orange">
+        <div class="report-stat-icon is-orange"><?= svgIcon('late', 24) ?></div>
         <div>
-            <div class="stat-value"><?= $stats['avg_late_minutes'] ?? 0 ?> <small>دقيقة</small></div>
-            <div class="stat-label">متوسط التأخير</div>
+            <div class="report-stat-value"><?= $stats['avg_late_minutes'] ?? 0 ?> <small>دقيقة</small></div>
+            <div class="report-stat-label">متوسط التأخير</div>
         </div>
     </div>
 </div>
 
 <!-- Row 1: Daily + Branch Charts -->
 <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px">
-    <div class="card" style="padding:20px">
-        <h3 style="margin:0 0 16px;font-size:1rem;color:var(--text-primary,#1E293B)">📊 الحضور والانصراف اليومي</h3>
+    <div class="chart-card">
+        <h3 class="chart-card-title"><?= svgIcon('chart', 18) ?> الحضور والانصراف اليومي</h3>
         <div style="position:relative;height:280px"><canvas id="dailyChart"></canvas></div>
     </div>
-    <div class="card" style="padding:20px">
-        <h3 style="margin:0 0 16px;font-size:1rem;color:var(--text-primary,#1E293B)">🏢 التوزيع حسب الفروع</h3>
+    <div class="chart-card">
+        <h3 class="chart-card-title"><?= svgIcon('branch', 18) ?> التوزيع حسب الفروع</h3>
         <div style="position:relative;height:280px"><canvas id="branchChart"></canvas></div>
     </div>
 </div>
 
 <!-- Row 2: Late + Day-of-Week Charts -->
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
-    <div class="card" style="padding:20px">
-        <h3 style="margin:0 0 16px;font-size:1rem;color:var(--text-primary,#1E293B)">⏱️ متوسط التأخير اليومي (دقائق)</h3>
+    <div class="chart-card">
+        <h3 class="chart-card-title"><?= svgIcon('late', 18) ?> متوسط التأخير اليومي (دقائق)</h3>
         <div style="position:relative;height:260px"><canvas id="lateChart"></canvas></div>
     </div>
-    <div class="card" style="padding:20px">
-        <h3 style="margin:0 0 16px;font-size:1rem;color:var(--text-primary,#1E293B)">📅 الحضور حسب أيام الأسبوع</h3>
+    <div class="chart-card">
+        <h3 class="chart-card-title"><?= svgIcon('calendar', 18) ?> الحضور حسب أيام الأسبوع</h3>
         <div style="position:relative;height:260px"><canvas id="dowChart"></canvas></div>
     </div>
 </div>
 
 <!-- Row 3: Top Late Employees Table -->
 <?php if (!empty($topLateData)): ?>
-<div class="card" style="padding:20px;margin-bottom:20px">
-    <h3 style="margin:0 0 16px;font-size:1rem;color:var(--text-primary,#1E293B)">🔴 أكثر الموظفين تأخيراً</h3>
+<div class="report-table-wrap" style="margin-bottom:20px">
+    <div class="card-header" style="padding:16px 20px;margin:0;border-bottom:2px solid var(--surface3)">
+        <span class="card-title"><span class="card-title-bar"></span> <?= svgIcon('late', 18) ?> أكثر الموظفين تأخيراً</span>
+    </div>
     <div style="overflow-x:auto">
-        <table class="nice-table" style="width:100%">
+        <table>
             <thead>
                 <tr>
                     <th>#</th>
@@ -290,7 +286,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                     <td><strong><?= htmlspecialchars($emp['name']) ?></strong></td>
                     <td><?= htmlspecialchars($emp['branch_name']) ?></td>
                     <td><?= $emp['late_days'] ?></td>
-                    <td><span style="color:#DC2626;font-weight:600"><?= number_format($emp['total_late']) ?></span></td>
+                    <td><span class="badge badge-red"><?= number_format($emp['total_late']) ?></span></td>
                     <td><?= $emp['avg_late'] ?> دقيقة</td>
                 </tr>
                 <?php endforeach; ?>
@@ -308,24 +304,6 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         div[style*="grid-template-columns:1fr 1fr"] {
             grid-template-columns: 1fr !important;
         }
-    }
-    .nice-table {
-        border-collapse: collapse;
-    }
-    .nice-table th, .nice-table td {
-        padding: 10px 14px;
-        text-align: right;
-        border-bottom: 1px solid var(--border-color, #E2E8F0);
-        font-size: .88rem;
-    }
-    .nice-table th {
-        background: var(--surface2, #F8FAFC);
-        font-weight: 600;
-        color: var(--text3, #64748B);
-        font-size: .82rem;
-    }
-    .nice-table tbody tr:hover {
-        background: var(--hover-bg, #F1F5F9);
     }
 </style>
 

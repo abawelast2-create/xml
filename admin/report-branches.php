@@ -102,43 +102,42 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
 
 <!-- أدوات -->
-<div class="card" style="margin-bottom:16px;padding:14px">
-    <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <div>
-            <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">من</label>
-            <input type="date" name="date_from" value="<?= htmlspecialchars($dateFrom) ?>"
-                   style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+<div class="report-filter">
+    <form method="GET" class="filter-bar">
+        <div class="form-group">
+            <label>من</label>
+            <input type="date" name="date_from" value="<?= htmlspecialchars($dateFrom) ?>" class="form-control">
         </div>
-        <div>
-            <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">إلى</label>
-            <input type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>"
-                   style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+        <div class="form-group">
+            <label>إلى</label>
+            <input type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>" class="form-control">
         </div>
-        <div>
-            <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">الوردية</label>
-            <select name="shift_num"
-                    style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+        <div class="form-group">
+            <label>الوردية</label>
+            <select name="shift_num" class="form-control">
                 <option value="0">كل الورديات</option>
                 <?php for ($sn = 1; $sn <= $maxShiftNum; $sn++): ?>
                     <option value="<?= $sn ?>" <?= $filterShiftNum === $sn ? 'selected' : '' ?>>الوردية <?= $sn ?></option>
                 <?php endfor; ?>
             </select>
         </div>
-        <button type="submit" class="btn btn-primary" style="padding:8px 20px">عرض</button>
-        <button type="button" onclick="window.print()" class="btn btn-secondary" style="padding:8px 16px">🖨️ طباعة</button>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary"><?= svgIcon('compare', 16) ?> عرض</button>
+            <button type="button" onclick="window.print()" class="btn btn-secondary"><?= svgIcon('document', 16) ?> طباعة</button>
+        </div>
     </form>
 </div>
 
 <!-- الرسم البياني -->
-<div class="card" style="margin-bottom:16px;padding:20px">
-    <h3 style="font-size:.95rem;margin-bottom:14px;color:var(--text-primary)"><span class="card-title-bar"></span> نسبة الحضور حسب الفرع</h3>
+<div class="chart-card" style="margin-bottom:20px">
+    <h3 class="chart-card-title"><?= svgIcon('chart', 18) ?> نسبة الحضور حسب الفرع</h3>
     <div style="display:grid;gap:12px">
         <?php foreach ($branchStats as $bs): 
-            $color = $bs['attendance_rate'] >= 90 ? '#10B981' : ($bs['attendance_rate'] >= 70 ? '#F59E0B' : '#EF4444');
+            $color = $bs['attendance_rate'] >= 90 ? 'var(--green)' : ($bs['attendance_rate'] >= 70 ? 'var(--yellow)' : 'var(--red)');
         ?>
         <div style="display:flex;align-items:center;gap:12px">
             <div style="width:100px;font-size:.85rem;font-weight:600;text-align:left;flex-shrink:0"><?= htmlspecialchars($bs['name']) ?></div>
-            <div style="flex:1;background:var(--surface2,#F1F5F9);border-radius:8px;height:28px;overflow:hidden;position:relative">
+            <div style="flex:1;background:var(--surface3);border-radius:8px;height:28px;overflow:hidden;position:relative">
                 <div style="width:<?= $bs['attendance_rate'] ?>%;background:<?= $color ?>;height:100%;border-radius:8px;transition:width .5s;display:flex;align-items:center;justify-content:flex-end;padding:0 8px;min-width:40px">
                     <span style="color:#fff;font-size:.75rem;font-weight:700"><?= $bs['attendance_rate'] ?>%</span>
                 </div>
@@ -149,19 +148,19 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 </div>
 
 <!-- الجدول -->
-<div class="card" style="padding:0;overflow:hidden">
+<div class="report-table-wrap">
     <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse">
+        <table>
             <thead>
-                <tr style="background:var(--surface2,#F8FAFC)">
-                    <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:var(--text3);font-weight:600">الترتيب</th>
-                    <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:var(--text3);font-weight:600">الفرع</th>
-                    <th style="padding:12px 14px;text-align:center;font-size:.82rem;color:var(--text3);font-weight:600">الموظفون</th>
-                    <th style="padding:12px 14px;text-align:center;font-size:.82rem;color:var(--text3);font-weight:600">نسبة الحضور</th>
-                    <th style="padding:12px 14px;text-align:center;font-size:.82rem;color:var(--text3);font-weight:600">أيام الحضور</th>
-                    <th style="padding:12px 14px;text-align:center;font-size:.82rem;color:var(--text3);font-weight:600">أيام الغياب</th>
-                    <th style="padding:12px 14px;text-align:center;font-size:.82rem;color:var(--text3);font-weight:600">تأخيرات</th>
-                    <th style="padding:12px 14px;text-align:center;font-size:.82rem;color:var(--text3);font-weight:600">متوسط التأخير</th>
+                <tr>
+                    <th>الترتيب</th>
+                    <th>الفرع</th>
+                    <th style="text-align:center">الموظفون</th>
+                    <th style="text-align:center">نسبة الحضور</th>
+                    <th style="text-align:center">أيام الحضور</th>
+                    <th style="text-align:center">أيام الغياب</th>
+                    <th style="text-align:center">تأخيرات</th>
+                    <th style="text-align:center">متوسط التأخير</th>
                 </tr>
             </thead>
             <tbody>
@@ -171,21 +170,19 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                     elseif ($i === 1) $medal = '🥈';
                     elseif ($i === 2) $medal = '🥉';
                 ?>
-                <tr style="border-bottom:1px solid var(--border-color,#E2E8F0)">
-                    <td style="padding:12px 14px;font-size:.95rem"><?= $medal ?: ($i + 1) ?></td>
-                    <td style="padding:12px 14px;font-weight:600"><?= htmlspecialchars($bs['name']) ?></td>
-                    <td style="padding:12px 14px;text-align:center"><?= $bs['emp_count'] ?></td>
-                    <td style="padding:12px 14px;text-align:center">
-                        <span style="background:<?= $bs['attendance_rate'] >= 90 ? '#D1FAE5' : ($bs['attendance_rate'] >= 70 ? '#FEF3C7' : '#FEE2E2') ?>;
-                               color:<?= $bs['attendance_rate'] >= 90 ? '#065F46' : ($bs['attendance_rate'] >= 70 ? '#92400E' : '#991B1B') ?>;
-                               padding:4px 12px;border-radius:12px;font-weight:700;font-size:.88rem">
+                <tr>
+                    <td style="font-size:.95rem"><?= $medal ?: ($i + 1) ?></td>
+                    <td style="font-weight:600"><?= htmlspecialchars($bs['name']) ?></td>
+                    <td style="text-align:center"><?= $bs['emp_count'] ?></td>
+                    <td style="text-align:center">
+                        <span class="badge <?= $bs['attendance_rate'] >= 90 ? 'badge-green' : ($bs['attendance_rate'] >= 70 ? 'badge-yellow' : 'badge-red') ?>">
                             <?= $bs['attendance_rate'] ?>%
                         </span>
                     </td>
-                    <td style="padding:12px 14px;text-align:center;color:#10B981;font-weight:600"><?= $bs['present_days'] ?></td>
-                    <td style="padding:12px 14px;text-align:center;color:#EF4444;font-weight:600"><?= $bs['absent_days'] ?></td>
-                    <td style="padding:12px 14px;text-align:center;color:#D97706;font-weight:600"><?= $bs['late_count'] ?></td>
-                    <td style="padding:12px 14px;text-align:center;font-size:.85rem"><?= $bs['avg_late_min'] ?> دقيقة</td>
+                    <td style="text-align:center;color:var(--green);font-weight:600"><?= $bs['present_days'] ?></td>
+                    <td style="text-align:center;color:var(--red);font-weight:600"><?= $bs['absent_days'] ?></td>
+                    <td style="text-align:center;color:var(--yellow);font-weight:600"><?= $bs['late_count'] ?></td>
+                    <td style="text-align:center;font-size:.85rem"><?= $bs['avg_late_min'] ?> دقيقة</td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>

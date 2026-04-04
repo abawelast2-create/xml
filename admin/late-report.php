@@ -32,6 +32,9 @@ if (!isset($_GET['date_from']) || $resetRequested) {
 }
 $dateFrom   = $_GET['date_from'] ?? $defaultFrom;
 $dateTo     = $_GET['date_to']   ?? date('Y-m-d');
+// التحقق من صحة التواريخ
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) $dateFrom = $defaultFrom ?? date('Y-m-05');
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo))   $dateTo   = date('Y-m-d');
 
 // جلب قوائم الموظفين والفروع للفلتر
 $employees = db()->query("SELECT id, name, branch_id FROM employees WHERE is_active=1 AND deleted_at IS NULL ORDER BY name")->fetchAll();
@@ -149,14 +152,6 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
 
 <style>
-    .filter-card {
-        background: var(--surface);
-        border-radius: var(--radius);
-        padding: 20px;
-        margin-bottom: 20px;
-        border: 1px solid var(--border)
-    }
-
     .filter-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -166,28 +161,32 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 
     .filter-group label {
         display: block;
-        font-weight: 600;
+        font-weight: 700;
         margin-bottom: 4px;
-        color: var(--text2);
-        font-size: .82rem
+        color: var(--text3);
+        font-size: .76rem;
+        text-transform: uppercase;
+        letter-spacing: .04em
     }
 
     .filter-group select,
     .filter-group input {
         width: 100%;
-        padding: 8px 12px;
+        padding: 9px 12px;
         border: 1.5px solid var(--border);
         border-radius: 8px;
         font-family: inherit;
-        font-size: .88rem;
-        background: var(--surface)
+        font-size: .85rem;
+        background: var(--surface2);
+        color: var(--text);
+        transition: border-color .2s, box-shadow .2s
     }
-
-    .filter-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 16px;
-        flex-wrap: wrap
+    .filter-group select:focus,
+    .filter-group input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(232,114,42,.1);
+        background: var(--surface);
+        outline: none
     }
 
     .late-badge {
@@ -217,21 +216,10 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         background: #EF4444;
         color: #fff
     }
-
-    .section-title {
-        font-size: 1.05rem;
-        font-weight: 700;
-        margin: 24px 0 12px;
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        gap: 8px
-    }
 </style>
 
 <!-- فلاتر -->
-<div class="filter-card">
-    <div style="font-weight:700;font-size:.95rem;margin-bottom:8px">🔍 تصفية التقرير</div>
+<div class="report-filter">
     <form method="GET">
         <div class="filter-grid">
             <div class="filter-group">
@@ -275,11 +263,11 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                 </select>
             </div>
         </div>
-        <div class="filter-actions">
-            <button type="submit" class="btn btn-primary">📊 عرض التقرير</button>
-            <a href="late-report.php?reset=1" class="btn btn-secondary">🔄 إعادة تعيين</a>
+        <div class="filter-actions" style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+            <button type="submit" class="btn btn-primary"><?= svgIcon('chart', 16) ?> عرض التقرير</button>
+            <a href="late-report.php?reset=1" class="btn btn-secondary"><?= svgIcon('leave', 16) ?> إعادة تعيين</a>
             <?php if (!empty($lateRecords)): ?>
-                <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="btn btn-green">📥 تصدير CSV</a>
+                <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>" class="btn-export"><?= svgIcon('backup', 16) ?> تصدير CSV</a>
                 <?php
                 $pdfBase = array_filter(['date_from'=>$dateFrom,'date_to'=>$dateTo,'filter_type'=>$filterType,'employee_id'=>$employeeId,'branch_id'=>$branchId]);
                 ?>
@@ -295,41 +283,41 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 </div>
 
 <?php if (empty($lateRecords)): ?>
-    <div class="card" style="text-align:center;padding:50px;color:var(--text3)">
-        <div style="font-size:3rem;margin-bottom:12px">🎉</div>
-        <div style="font-size:1.1rem;font-weight:600">لا توجد حالات تأخير في الفترة المحددة</div>
-        <div style="margin-top:6px">جميع الموظفين ملتزمون بأوقات الحضور</div>
+    <div class="report-empty" style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border)">
+        <?= svgIcon('checkin', 64) ?>
+        <p style="font-size:1.1rem;font-weight:600;margin-top:12px">لا توجد حالات تأخير في الفترة المحددة</p>
+        <p>جميع الموظفين ملتزمون بأوقات الحضور</p>
     </div>
 <?php else: ?>
 
     <!-- الإحصائيات -->
-    <div class="stats-grid" style="margin-bottom:20px">
-        <div class="stat-card">
-            <div class="stat-icon-wrap orange"><?= svgIcon('clock', 26) ?></div>
+    <div class="report-stats">
+        <div class="report-stat accent-orange">
+            <div class="report-stat-icon is-orange"><?= svgIcon('clock', 24) ?></div>
             <div>
-                <div class="stat-value"><?= number_format($totalLateMinutes) ?></div>
-                <div class="stat-label">إجمالي دقائق التأخير</div>
+                <div class="report-stat-value"><?= number_format($totalLateMinutes) ?></div>
+                <div class="report-stat-label">إجمالي دقائق التأخير</div>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon-wrap red"><?= svgIcon('attendance', 26) ?></div>
+        <div class="report-stat accent-red">
+            <div class="report-stat-icon is-red"><?= svgIcon('attendance', 24) ?></div>
             <div>
-                <div class="stat-value"><?= $totalLateDays ?></div>
-                <div class="stat-label">عدد أيام التأخير</div>
+                <div class="report-stat-value"><?= $totalLateDays ?></div>
+                <div class="report-stat-label">عدد أيام التأخير</div>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon-wrap blue"><?= svgIcon('employees', 26) ?></div>
+        <div class="report-stat accent-blue">
+            <div class="report-stat-icon is-blue"><?= svgIcon('employees', 24) ?></div>
             <div>
-                <div class="stat-value"><?= $uniqueEmployees ?></div>
-                <div class="stat-label">موظفون متأخرون</div>
+                <div class="report-stat-value"><?= $uniqueEmployees ?></div>
+                <div class="report-stat-label">موظفون متأخرون</div>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon-wrap purple"><?= svgIcon('clock', 26) ?></div>
+        <div class="report-stat accent-purple">
+            <div class="report-stat-icon is-purple"><?= svgIcon('late', 24) ?></div>
             <div>
-                <div class="stat-value"><?= $totalLateDays ? round($totalLateMinutes / $totalLateDays) : 0 ?></div>
-                <div class="stat-label">متوسط التأخير (دقيقة/يوم)</div>
+                <div class="report-stat-value"><?= $totalLateDays ? round($totalLateMinutes / $totalLateDays) : 0 ?></div>
+                <div class="report-stat-label">متوسط التأخير (دقيقة/يوم)</div>
             </div>
         </div>
     </div>
@@ -344,8 +332,10 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     </div>
 
     <!-- ملخص حسب الموظف -->
-    <div class="section-title"><?= svgIcon('employees', 20) ?> ملخص التأخير حسب الموظف</div>
-    <div class="card" style="margin-bottom:20px">
+    <div class="report-table-wrap" style="margin-bottom:20px">
+        <div class="card-header" style="padding:16px 20px;margin:0;border-bottom:2px solid var(--surface3)">
+            <span class="card-title"><span class="card-title-bar"></span> <?= svgIcon('employees', 18) ?> ملخص التأخير حسب الموظف</span>
+        </div>
         <div style="overflow-x:auto">
             <table class="att-table">
                 <thead>
@@ -396,8 +386,10 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     </div>
 
     <!-- التفاصيل اليومية -->
-    <div class="section-title"><?= svgIcon('attendance', 20) ?> التفاصيل اليومية</div>
-    <div class="card">
+    <div class="report-table-wrap">
+        <div class="card-header" style="padding:16px 20px;margin:0;border-bottom:2px solid var(--surface3)">
+            <span class="card-title"><span class="card-title-bar"></span> <?= svgIcon('calendar', 18) ?> التفاصيل اليومية</span>
+        </div>
         <div style="overflow-x:auto">
             <table class="att-table">
                 <thead>

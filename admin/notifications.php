@@ -108,17 +108,16 @@ $countStmt->execute($params);
 $totalRecords = (int)$countStmt->fetchColumn();
 $totalPages = max(1, ceil($totalRecords / $perPage));
 
-$fetchParams = $params;
-$fetchParams[] = $perPage;
-$fetchParams[] = $offset;
-
 $notifStmt = db()->prepare("
     SELECT n.* FROM notifications n
     WHERE {$where}
     ORDER BY n.is_read ASC, n.created_at DESC
     LIMIT ? OFFSET ?
 ");
-$notifStmt->execute($fetchParams);
+foreach ($params as $i => $v) { $notifStmt->bindValue($i + 1, $v); }
+$notifStmt->bindValue(count($params) + 1, $perPage, PDO::PARAM_INT);
+$notifStmt->bindValue(count($params) + 2, $offset, PDO::PARAM_INT);
+$notifStmt->execute();
 $notifications = $notifStmt->fetchAll();
 
 $typeIcons = [

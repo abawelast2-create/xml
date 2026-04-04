@@ -15,6 +15,9 @@ $activePage = 'report-early';
 // الفلاتر
 $dateFrom   = $_GET['date_from']   ?? date('Y-m-01');
 $dateTo     = $_GET['date_to']     ?? date('Y-m-d');
+// التحقق من صحة التواريخ
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) $dateFrom = date('Y-m-01');
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo))   $dateTo   = date('Y-m-d');
 if ($dateFrom > $dateTo) { $tmp = $dateFrom; $dateFrom = $dateTo; $dateTo = $tmp; }
 $branchId   = (int)($_GET['branch_id'] ?? 0);
 $employeeId = (int)($_GET['employee_id'] ?? 0);
@@ -97,22 +100,17 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
 
 <style>
-.filter-card { background:var(--surface); border-radius:var(--radius); padding:20px; margin-bottom:20px; border:1px solid var(--border) }
 .filter-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; margin-top:12px }
-.star-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:8px; font-size:.8rem; font-weight:700 }
-.star-gold { background:#FEF3C7; color:#92400E }
-.star-silver { background:#F3F4F6; color:#4B5563 }
-.star-bronze { background:#FED7AA; color:#9A3412 }
-.rank-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.8rem; color:#fff }
+.rank-num { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.82rem; color:#fff }
 </style>
 
 <!-- الفلاتر -->
-<div class="filter-card">
-    <form method="GET" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
-        <div><label class="form-label">من تاريخ</label><input class="form-control" type="date" name="date_from" value="<?= $dateFrom ?>"></div>
-        <div><label class="form-label">إلى تاريخ</label><input class="form-control" type="date" name="date_to" value="<?= $dateTo ?>"></div>
-        <div>
-            <label class="form-label">الفرع</label>
+<div class="report-filter">
+    <form method="GET" class="filter-bar">
+        <div class="form-group"><label>من تاريخ</label><input class="form-control" type="date" name="date_from" value="<?= htmlspecialchars($dateFrom) ?>"></div>
+        <div class="form-group"><label>إلى تاريخ</label><input class="form-control" type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>"></div>
+        <div class="form-group">
+            <label>الفرع</label>
             <select class="form-control" name="branch_id" id="branchSelect">
                 <option value="0">الكل</option>
                 <?php foreach ($branches as $br): ?>
@@ -120,14 +118,14 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                 <?php endforeach; ?>
             </select>
         </div>
-        <div>
-            <label class="form-label">الوردية</label>
+        <div class="form-group">
+            <label>الوردية</label>
             <select class="form-control" name="shift" id="shiftSelect">
                 <option value="0">كل الورديات</option>
             </select>
         </div>
-        <div>
-            <label class="form-label">الموظف</label>
+        <div class="form-group">
+            <label>الموظف</label>
             <select class="form-control" name="employee_id">
                 <option value="0">الكل</option>
                 <?php foreach ($employees as $e): ?>
@@ -135,27 +133,29 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                 <?php endforeach; ?>
             </select>
         </div>
-        <div>
-            <label class="form-label">الحد الأدنى (دقيقة)</label>
+        <div class="form-group">
+            <label>الحد الأدنى (دقيقة)</label>
             <input class="form-control" type="number" name="min_early" value="<?= $minEarly ?>" min="1" max="120" style="width:100px">
         </div>
-        <button type="submit" class="btn btn-primary">بحث</button>
-        <a href="?date_from=<?= $dateFrom ?>&date_to=<?= $dateTo ?>&branch_id=<?= $branchId ?>&min_early=<?= $minEarly ?>&export=csv" class="btn btn-green">تصدير CSV</a>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary"><?= svgIcon('attendance', 16) ?> بحث</button>
+            <a href="?date_from=<?= htmlspecialchars($dateFrom) ?>&date_to=<?= htmlspecialchars($dateTo) ?>&branch_id=<?= $branchId ?>&min_early=<?= $minEarly ?>&export=csv" class="btn-export"><?= svgIcon('backup', 16) ?> تصدير CSV</a>
+        </div>
     </form>
 </div>
 
 <!-- الإحصائيات -->
-<div class="stats-grid" style="margin-bottom:20px">
-    <div class="stat-card"><div class="stat-icon-wrap green">⭐</div><div><div class="stat-value"><?= $uniqueEmployees ?></div><div class="stat-label">موظفون متميزون</div></div></div>
-    <div class="stat-card"><div class="stat-icon-wrap blue"><?= svgIcon('attendance', 26) ?></div><div><div class="stat-value"><?= $totalEarlyDays ?></div><div class="stat-label">أيام تبكير</div></div></div>
-    <div class="stat-card"><div class="stat-icon-wrap orange">⏱️</div><div><div class="stat-value"><?= number_format($totalEarlyMinutes) ?></div><div class="stat-label">إجمالي دقائق التبكير</div></div></div>
-    <div class="stat-card"><div class="stat-icon-wrap purple">📊</div><div><div class="stat-value"><?= $uniqueEmployees > 0 ? round($totalEarlyMinutes / $uniqueEmployees) : 0 ?></div><div class="stat-label">متوسط التبكير / موظف</div></div></div>
+<div class="report-stats">
+    <div class="report-stat accent-green"><div class="report-stat-icon is-green"><?= svgIcon('star', 24) ?></div><div><div class="report-stat-value"><?= $uniqueEmployees ?></div><div class="report-stat-label">موظفون متميزون</div></div></div>
+    <div class="report-stat accent-blue"><div class="report-stat-icon is-blue"><?= svgIcon('calendar', 24) ?></div><div><div class="report-stat-value"><?= $totalEarlyDays ?></div><div class="report-stat-label">أيام تبكير</div></div></div>
+    <div class="report-stat accent-orange"><div class="report-stat-icon is-orange"><?= svgIcon('clock', 24) ?></div><div><div class="report-stat-value"><?= number_format($totalEarlyMinutes) ?></div><div class="report-stat-label">إجمالي دقائق التبكير</div></div></div>
+    <div class="report-stat accent-purple"><div class="report-stat-icon is-purple"><?= svgIcon('chart', 24) ?></div><div><div class="report-stat-value"><?= $uniqueEmployees > 0 ? round($totalEarlyMinutes / $uniqueEmployees) : 0 ?></div><div class="report-stat-label">متوسط التبكير / موظف</div></div></div>
 </div>
 
 <!-- ترتيب المتميزين -->
-<div class="card" style="margin-bottom:20px">
-    <div class="card-header">
-        <span class="card-title"><span class="card-title-bar"></span> 🏆 ترتيب المتميزين</span>
+<div class="report-table-wrap" style="margin-bottom:20px">
+    <div class="card-header" style="padding:16px 20px;margin:0;border-bottom:2px solid var(--surface3)">
+        <span class="card-title"><span class="card-title-bar"></span> <?= svgIcon('star', 18) ?> ترتيب المتميزين</span>
         <span class="badge badge-green"><?= $uniqueEmployees ?> موظف</span>
     </div>
     <div style="overflow-x:auto">
@@ -163,7 +163,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         <thead><tr><th>الترتيب</th><th>الموظف</th><th>الفرع</th><th>أيام التبكير</th><th>إجمالي التبكير</th><th>أقصى تبكير</th><th>متوسط التبكير</th></tr></thead>
         <tbody>
         <?php if (empty($employeeStats)): ?>
-            <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text3)">لا يوجد سجلات تبكير في هذه الفترة</td></tr>
+            <tr><td colspan="7" class="report-empty" style="padding:40px"><p>لا يوجد سجلات تبكير في هذه الفترة</p></td></tr>
         <?php else: ?>
             <?php $rank = 0; foreach ($employeeStats as $eid => $s): $rank++; ?>
             <tr>
@@ -177,7 +177,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                 <td>
                     <strong><?= htmlspecialchars($s['name']) ?></strong>
                     <?php if ($rank <= 3): ?>
-                        <span class="star-badge <?= $rank === 1 ? 'star-gold' : ($rank === 2 ? 'star-silver' : 'star-bronze') ?>">
+                        <span class="rank-badge <?= $rank === 1 ? 'gold' : ($rank === 2 ? 'silver' : 'bronze') ?>">
                             <?= $rank === 1 ? '🥇 ذهبي' : ($rank === 2 ? '🥈 فضي' : '🥉 برونزي') ?>
                         </span>
                     <?php endif; ?>
@@ -197,9 +197,9 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 </div>
 
 <!-- التفاصيل اليومية -->
-<div class="card">
-    <div class="card-header">
-        <span class="card-title"><span class="card-title-bar"></span> التفاصيل اليومية</span>
+<div class="report-table-wrap">
+    <div class="card-header" style="padding:16px 20px;margin:0;border-bottom:2px solid var(--surface3)">
+        <span class="card-title"><span class="card-title-bar"></span> <?= svgIcon('calendar', 18) ?> التفاصيل اليومية</span>
         <span class="badge badge-blue"><?= count($records) ?> سجل</span>
     </div>
     <div style="overflow-x:auto">

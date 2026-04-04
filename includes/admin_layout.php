@@ -55,10 +55,10 @@
                 <span class="nav-icon"><?= svgIcon('employees', 18) ?></span> إدارة الموظفين
             </a>
             <a href="employee-transfer.php" class="nav-item <?= ($activePage ?? '') === 'employee-transfer' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('employees', 18) ?></span> نقل الموظفين
+                <span class="nav-icon"><?= svgIcon('transfer', 18) ?></span> نقل الموظفين
             </a>
             <a href="auto-attendance.php" class="nav-item <?= ($activePage ?? '') === 'auto-attendance' ? 'active' : '' ?>">
-                <span class="nav-icon">🤖</span> الحضور التلقائي
+                <span class="nav-icon"><?= svgIcon('robot', 18) ?></span> الحضور التلقائي
             </a>
 
             <div class="nav-label">التقارير</div>
@@ -66,48 +66,48 @@
                 <span class="nav-icon"><?= svgIcon('attendance', 18) ?></span> تقارير الحضور
             </a>
             <a href="late-report.php" class="nav-item <?= ($activePage ?? '') === 'late-report' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('attendance', 18) ?></span> تقرير التأخير
+                <span class="nav-icon"><?= svgIcon('late', 18) ?></span> تقرير التأخير
             </a>
             <a href="report-monthly.php" class="nav-item <?= ($activePage ?? '') === 'report-monthly' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('attendance', 18) ?></span> التقرير الشهري
+                <span class="nav-icon"><?= svgIcon('calendar', 18) ?></span> التقرير الشهري
             </a>
             <a href="report-absence.php" class="nav-item <?= ($activePage ?? '') === 'report-absence' ? 'active' : '' ?>">
                 <span class="nav-icon"><?= svgIcon('absent', 18) ?></span> تقرير الغياب
             </a>
             <a href="report-branches.php" class="nav-item <?= ($activePage ?? '') === 'report-branches' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('branch', 18) ?></span> مقارنة الفروع
+                <span class="nav-icon"><?= svgIcon('compare', 18) ?></span> مقارنة الفروع
             </a>
             <a href="report-early.php" class="nav-item <?= ($activePage ?? '') === 'report-early' ? 'active' : '' ?>">
-                <span class="nav-icon">⭐</span> تقرير المتميزين
+                <span class="nav-icon"><?= svgIcon('star', 18) ?></span> تقرير المتميزين
             </a>
             <a href="report-charts.php" class="nav-item <?= ($activePage ?? '') === 'report-charts' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('attendance', 18) ?></span> التقارير البيانية
+                <span class="nav-icon"><?= svgIcon('chart', 18) ?></span> التقارير البيانية
             </a>
 
             <div class="nav-label">الإدارة</div>
             <a href="leaves.php" class="nav-item <?= ($activePage ?? '') === 'leaves' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('absent', 18) ?></span> إدارة الإجازات
+                <span class="nav-icon"><?= svgIcon('leave', 18) ?></span> إدارة الإجازات
             </a>
             <a href="documents-expiry.php" class="nav-item <?= ($activePage ?? '') === 'documents-expiry' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('absent', 18) ?></span> الوثائق المنتهية
+                <span class="nav-icon"><?= svgIcon('document', 18) ?></span> الوثائق المنتهية
             </a>
             <a href="tampering.php" class="nav-item <?= ($activePage ?? '') === 'tampering' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('lock', 18) ?></span> حالات التلاعب
+                <span class="nav-icon"><?= svgIcon('shield', 18) ?></span> حالات التلاعب
             </a>
             <a href="secret-reports.php" class="nav-item <?= ($activePage ?? '') === 'secret-reports' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('absent', 18) ?></span> التقارير السرية
+                <span class="nav-icon"><?= svgIcon('secret', 18) ?></span> التقارير السرية
             </a>
             <a href="notifications.php" class="nav-item <?= ($activePage ?? '') === 'notifications' ? 'active' : '' ?>" style="position:relative">
-                <span class="nav-icon">🔔</span> الإشعارات
+                <span class="nav-icon"><?= svgIcon('bell', 18) ?></span> الإشعارات
                 <span class="notif-badge" id="sidebarNotifBadge" style="display:none;position:absolute;left:14px;top:8px;background:#EF4444;color:#fff;font-size:.65rem;padding:1px 6px;border-radius:10px;font-weight:700"></span>
             </a>
 
             <div class="nav-label">النظام</div>
             <a href="audit-log.php" class="nav-item <?= ($activePage ?? '') === 'audit-log' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('lock', 18) ?></span> سجل المراجعة
+                <span class="nav-icon"><?= svgIcon('audit', 18) ?></span> سجل المراجعة
             </a>
             <a href="backups.php" class="nav-item <?= ($activePage ?? '') === 'backups' ? 'active' : '' ?>">
-                <span class="nav-icon"><?= svgIcon('settings', 18) ?></span> النسخ الاحتياطي
+                <span class="nav-icon"><?= svgIcon('backup', 18) ?></span> النسخ الاحتياطي
             </a>
             <a href="settings.php" class="nav-item <?= ($activePage ?? '') === 'settings'   ? 'active' : '' ?>">
                 <span class="nav-icon"><?= svgIcon('settings', 18) ?></span> إعدادات النظام
@@ -140,7 +140,7 @@
             <div class="topbar-right">
                 <span class="topbar-clock" id="topbarClock"></span>
                 <a href="notifications.php" title="الإشعارات" style="position:relative;color:var(--text-primary);text-decoration:none;font-size:1.2rem;margin:0 6px">
-                    🔔<span id="topbarNotifBadge" style="display:none;position:absolute;top:-4px;right:-6px;background:#EF4444;color:#fff;font-size:.6rem;padding:1px 5px;border-radius:8px;font-weight:700;min-width:14px;text-align:center"></span>
+                    <?= svgIcon('bell', 20) ?><span id="topbarNotifBadge" style="display:none;position:absolute;top:-4px;right:-6px;background:#EF4444;color:#fff;font-size:.6rem;padding:1px 5px;border-radius:8px;font-weight:700;min-width:14px;text-align:center"></span>
                 </a>
                 <button class="theme-toggle" onclick="ThemeManager.toggle()" title="تبديل المظهر">
                     <span class="icon-moon">🌙</span>

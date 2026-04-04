@@ -105,65 +105,65 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
 
 <!-- الأدوات -->
-<div class="card" style="margin-bottom:16px;padding:14px">
-    <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <div>
-            <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">من</label>
-            <input type="date" name="date_from" value="<?= htmlspecialchars($dateFrom) ?>"
-                   style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+<div class="report-filter">
+    <form method="GET" class="filter-bar">
+        <div class="form-group">
+            <label>من</label>
+            <input type="date" name="date_from" value="<?= htmlspecialchars($dateFrom) ?>" class="form-control">
         </div>
-        <div>
-            <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">إلى</label>
-            <input type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>"
-                   style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+        <div class="form-group">
+            <label>إلى</label>
+            <input type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>" class="form-control">
         </div>
-        <div>
-            <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">الفرع</label>
-            <select name="branch_id" id="branchSelect" style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+        <div class="form-group">
+            <label>الفرع</label>
+            <select name="branch_id" id="branchSelect" class="form-control">
                 <option value="">كل الفروع</option>
                 <?php foreach ($branches as $b): ?>
                     <option value="<?= $b['id'] ?>" <?= $branchId == $b['id'] ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <div>
-            <label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:3px">الوردية</label>
-            <select name="shift" id="shiftSelect" style="padding:8px 12px;border:1px solid var(--border-color,#E2E8F0);border-radius:8px;font-size:.88rem;background:var(--surface2,#F8FAFC);color:var(--text-primary)">
+        <div class="form-group">
+            <label>الوردية</label>
+            <select name="shift" id="shiftSelect" class="form-control">
                 <option value="0">كل الورديات</option>
             </select>
         </div>
-        <button type="submit" class="btn btn-primary" style="padding:8px 20px">عرض</button>
-        <button type="button" onclick="window.print()" class="btn btn-secondary" style="padding:8px 16px">🖨️ طباعة</button>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary"><?= svgIcon('attendance', 16) ?> عرض</button>
+            <button type="button" onclick="window.print()" class="btn btn-secondary">🖨️ طباعة</button>
+        </div>
     </form>
 </div>
 
 <!-- ملخص -->
-<div class="stats-grid" style="margin-bottom:16px">
-    <div class="stat-card">
-        <div class="stat-icon-wrap red">✗</div>
-        <div><div class="stat-value"><?= $totalAbsent ?></div><div class="stat-label">إجمالي أيام الغياب</div></div>
+<div class="report-stats">
+    <div class="report-stat accent-red">
+        <div class="report-stat-icon is-red"><?= svgIcon('absent', 24) ?></div>
+        <div><div class="report-stat-value"><?= $totalAbsent ?></div><div class="report-stat-label">إجمالي أيام الغياب</div></div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon-wrap" style="background:#FEF3C7;color:#D97706">👥</div>
-        <div><div class="stat-value"><?= count($absenceData) ?></div><div class="stat-label">موظفون لديهم غياب</div></div>
+    <div class="report-stat accent-orange">
+        <div class="report-stat-icon is-orange"><?= svgIcon('employees', 24) ?></div>
+        <div><div class="report-stat-value"><?= count($absenceData) ?></div><div class="report-stat-label">موظفون لديهم غياب</div></div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon-wrap" style="background:#DBEAFE;color:#2563EB">📊</div>
-        <div><div class="stat-value"><?= count($absenceData) > 0 ? round($totalAbsent / count($absenceData), 1) : 0 ?></div><div class="stat-label">متوسط أيام الغياب</div></div>
+    <div class="report-stat accent-blue">
+        <div class="report-stat-icon is-blue"><?= svgIcon('chart', 24) ?></div>
+        <div><div class="report-stat-value"><?= count($absenceData) > 0 ? round($totalAbsent / count($absenceData), 1) : 0 ?></div><div class="report-stat-label">متوسط أيام الغياب</div></div>
     </div>
 </div>
 
 <!-- الجدول -->
-<div class="card" style="padding:0;overflow:hidden">
+<div class="report-table-wrap">
     <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse">
+        <table>
             <thead>
-                <tr style="background:var(--surface2,#F8FAFC)">
-                    <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:var(--text3);font-weight:600">#</th>
-                    <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:var(--text3);font-weight:600">الموظف</th>
-                    <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:var(--text3);font-weight:600">الفرع</th>
-                    <th style="padding:12px 14px;text-align:center;font-size:.82rem;color:var(--text3);font-weight:600">أيام الغياب</th>
-                    <th style="padding:12px 14px;text-align:right;font-size:.82rem;color:var(--text3);font-weight:600">التواريخ</th>
+                <tr>
+                    <th>#</th>
+                    <th>الموظف</th>
+                    <th>الفرع</th>
+                    <th style="text-align:center">أيام الغياب</th>
+                    <th>التواريخ</th>
                 </tr>
             </thead>
             <tbody>
@@ -171,24 +171,22 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                     <tr><td colspan="5" style="padding:40px;text-align:center;color:var(--green)">🎉 لا يوجد غياب في هذه الفترة!</td></tr>
                 <?php endif; ?>
                 <?php foreach ($absenceData as $i => $row): ?>
-                <tr style="border-bottom:1px solid var(--border-color,#E2E8F0)">
-                    <td style="padding:12px 14px;font-size:.85rem;color:var(--text3)"><?= $i + 1 ?></td>
-                    <td style="padding:12px 14px">
-                        <strong style="font-size:.9rem"><?= htmlspecialchars($row['employee']['name']) ?></strong>
-                        <div style="font-size:.78rem;color:var(--text3)"><?= htmlspecialchars($row['employee']['job_title']) ?></div>
+                <tr>
+                    <td><?= $i + 1 ?></td>
+                    <td>
+                        <strong><?= htmlspecialchars($row['employee']['name']) ?></strong>
+                        <div style="font-size:.76rem;color:var(--text3)"><?= htmlspecialchars($row['employee']['job_title']) ?></div>
                     </td>
-                    <td style="padding:12px 14px;font-size:.88rem"><?= htmlspecialchars($row['employee']['branch_name'] ?? '—') ?></td>
-                    <td style="padding:12px 14px;text-align:center">
-                        <span style="background:<?= $row['count'] >= 5 ? '#FEE2E2' : ($row['count'] >= 3 ? '#FEF3C7' : '#F1F5F9') ?>;
-                               color:<?= $row['count'] >= 5 ? '#991B1B' : ($row['count'] >= 3 ? '#92400E' : 'var(--text-primary)') ?>;
-                               padding:4px 12px;border-radius:12px;font-weight:700;font-size:.88rem">
+                    <td><?= htmlspecialchars($row['employee']['branch_name'] ?? '—') ?></td>
+                    <td style="text-align:center">
+                        <span class="badge <?= $row['count'] >= 5 ? 'badge-red' : ($row['count'] >= 3 ? 'badge-yellow' : 'badge-blue') ?>">
                             <?= $row['count'] ?> يوم
                         </span>
                     </td>
-                    <td style="padding:12px 14px">
+                    <td>
                         <div style="display:flex;flex-wrap:wrap;gap:4px">
                             <?php foreach (array_slice($row['absent_days'], 0, 7) as $ad): ?>
-                                <span style="background:var(--surface2,#F8FAFC);padding:2px 8px;border-radius:6px;font-size:.75rem;direction:ltr"><?= date('m/d', strtotime($ad)) ?></span>
+                                <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:.72rem;padding:2px 8px"><?= date('m/d', strtotime($ad)) ?></span>
                             <?php endforeach; ?>
                             <?php if (count($row['absent_days']) > 7): ?>
                                 <span style="color:var(--text3);font-size:.75rem">+<?= count($row['absent_days']) - 7 ?> أخرى</span>
