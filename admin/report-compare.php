@@ -67,8 +67,12 @@ function calcPeriodStats(string $dateFrom, string $dateTo, array $weekendDays, i
     $allAtt = $stmt->fetchAll();
 
     $empCount = 0;
-    $cntStmt = db()->prepare("SELECT COUNT(*) FROM employees e WHERE e.is_active = 1 AND e.deleted_at IS NULL" . ($branchFilter > 0 ? " AND e.branch_id = {$branchFilter}" : '') . ($empFilter > 0 ? " AND e.id = {$empFilter}" : ''));
-    $cntStmt->execute();
+    $cntSql = "SELECT COUNT(*) FROM employees e WHERE e.is_active = 1 AND e.deleted_at IS NULL";
+    $cntParams = [];
+    if ($branchFilter > 0) { $cntSql .= " AND e.branch_id = ?"; $cntParams[] = $branchFilter; }
+    if ($empFilter > 0) { $cntSql .= " AND e.id = ?"; $cntParams[] = $empFilter; }
+    $cntStmt = db()->prepare($cntSql);
+    $cntStmt->execute($cntParams);
     $empCount = (int)$cntStmt->fetchColumn();
 
     $grouped = [];

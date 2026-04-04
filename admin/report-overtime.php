@@ -198,8 +198,8 @@ require __DIR__ . '/../includes/report_print_header.php';
 
 <!-- التبويبات -->
 <div class="tab-btns no-print">
-    <button class="tab-btn active" onclick="showTab('summary')">ملخص الموظفين</button>
-    <button class="tab-btn" onclick="showTab('detail')">التفاصيل اليومية</button>
+    <button class="tab-btn active" onclick="showTab('summary', this)">ملخص الموظفين</button>
+    <button class="tab-btn" onclick="showTab('detail', this)">التفاصيل اليومية</button>
 </div>
 
 <!-- ملخص -->
@@ -273,11 +273,11 @@ require __DIR__ . '/../includes/report_print_header.php';
 </div>
 
 <script>
-function showTab(name) {
+function showTab(name, el) {
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
-    event.target.classList.add('active');
+    if (el) el.classList.add('active');
 }
 </script>
 

@@ -441,7 +441,7 @@ hr { border:none; border-top:1px solid var(--border); margin:20px 0; }
     }
     .filter-bar .form-group { margin:0 !important; width:100% !important; }
     .filter-bar .form-control,
-    .filter-bar input,
+    .filter-bar input:not([type="checkbox"]),
     .filter-bar select { width:100% !important; min-width:0 !important; max-width:100% !important; }
     .filter-bar .btn { width:100%; justify-content:center; align-self:stretch !important; }
 

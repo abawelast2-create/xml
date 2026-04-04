@@ -298,7 +298,7 @@ require __DIR__ . '/../includes/report_print_header.php';
         </div>
 
         <!-- اختيار الأعمدة -->
-        <div style="grid-column:1/-1">
+        <div style="width:100%;flex:0 0 100%">
             <label style="font-weight:600;margin-bottom:8px;display:block">اختر الأعمدة المطلوبة:</label>
             <div class="cols-actions">
                 <button type="button" onclick="toggleAllCols(true)">✅ تحديد الكل</button>

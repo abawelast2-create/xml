@@ -72,7 +72,9 @@ try {
         $timestamp = $today . ' ' . $randomTime;
 
         // تحديد الوردية المناسبة وحساب التبكير/التأخير
-        $branchShiftsList = getAllBranchShifts($rule['branch_id']);
+        $shiftStmt = db()->prepare("SELECT shift_number, shift_start, shift_end FROM branch_shifts WHERE branch_id = ? AND is_active = 1 ORDER BY shift_number");
+        $shiftStmt->execute([$rule['branch_id']]);
+        $branchShiftsList = $shiftStmt->fetchAll();
         $shiftNum = !empty($branchShiftsList) ? assignTimeToShift(date('H:i', $randomTs), $branchShiftsList) : 1;
         $matchedShift = null;
         foreach ($branchShiftsList as $bs) {
