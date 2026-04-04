@@ -282,6 +282,14 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
 
+<?php
+$reportTitle = 'سجلات الحضور والانصراف';
+$reportSubtitle = 'نظام الحضور والانصراف';
+$reportMeta = ["الفترة: {$dateFrom} إلى {$dateTo}"];
+if ($filterBranch > 0) { foreach($branchList as $bb) if($bb['id']==$filterBranch) $reportMeta[] = "الفرع: ".$bb['name']; }
+require __DIR__ . '/../includes/report_print_header.php';
+?>
+
 <!-- فلاتر -->
 <div class="card" style="margin-bottom:20px">
     <form method="GET" class="filter-bar" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
@@ -849,6 +857,19 @@ document.getElementById('manualForm')?.addEventListener('submit', async function
     }
 });
 </script>
+
+<style>
+@media print {
+    .sidebar, .topbar, .bottom-nav, form, .no-print, .pagination { display: none !important; }
+    .main-content { margin: 0 !important; }
+    .content { padding: 0 !important; }
+    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5dcc8; }
+    .print-report-header, .print-report-footer { display: block !important; }
+    .content::after { opacity: .035 !important; }
+}
+</style>
+
+<?php require __DIR__ . '/../includes/report_print_footer.php'; ?>
 
 </div></div>
 </body></html>

@@ -219,6 +219,12 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 </style>
 
 <!-- فلاتر -->
+<?php
+$reportTitle = 'تقرير التأخيرات';
+$reportSubtitle = 'نظام الحضور والانصراف';
+$reportMeta = ["الفترة: {$dateFrom} إلى {$dateTo}"];
+require __DIR__ . '/../includes/report_print_header.php';
+?>
 <div class="report-filter">
     <form method="GET">
         <div class="filter-grid">
@@ -483,6 +489,19 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     }
     document.getElementById('sidebarOverlay')?.addEventListener('click', toggleSidebar);
 </script>
+
+<style>
+@media print {
+    .sidebar, .topbar, .bottom-nav, form, .no-print, .report-filter { display: none !important; }
+    .main-content { margin: 0 !important; }
+    .content { padding: 0 !important; }
+    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5dcc8; }
+    .print-report-header, .print-report-footer { display: block !important; }
+    .content::after { opacity: .035 !important; }
+}
+</style>
+
+<?php require __DIR__ . '/../includes/report_print_footer.php'; ?>
 
 </div>
 </div>

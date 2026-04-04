@@ -105,6 +105,13 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
 
 <!-- الأدوات -->
+<?php
+$reportTitle = 'التقرير الشهري';
+$reportSubtitle = 'نظام الحضور والانصراف';
+$reportMeta = ["الشهر: {$month}"];
+if ($branchId) { $bName = ''; foreach($branches as $bb) if($bb['id']==$branchId) $bName=$bb['name']; $reportMeta[] = "الفرع: {$bName}"; }
+require __DIR__ . '/../includes/report_print_header.php';
+?>
 <div class="card" style="margin-bottom:16px;padding:14px">
     <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <div>
@@ -304,10 +311,13 @@ foreach ($employees as $emp) {
     .sidebar, .topbar, .bottom-nav, form, .no-print { display: none !important; }
     .main-content { margin: 0 !important; }
     .content { padding: 0 !important; }
-    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd; }
+    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5dcc8; }
+    .print-report-header, .print-report-footer { display: block !important; }
+    .content::after { opacity: .035 !important; }
 }
 </style>
 
+<?php require __DIR__ . '/../includes/report_print_footer.php'; ?>
 <?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>
 </div></div>
 </body></html>

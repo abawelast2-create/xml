@@ -102,6 +102,12 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 ?>
 
 <!-- أدوات -->
+<?php
+$reportTitle = 'تقرير مقارنة الفروع';
+$reportSubtitle = 'نظام الحضور والانصراف';
+$reportMeta = ["الفترة: {$dateFrom} إلى {$dateTo}"];
+require __DIR__ . '/../includes/report_print_header.php';
+?>
 <div class="report-filter">
     <form method="GET" class="filter-bar">
         <div class="form-group">
@@ -195,10 +201,13 @@ require_once __DIR__ . '/../includes/admin_layout.php';
     .sidebar, .topbar, .bottom-nav, form, .no-print { display: none !important; }
     .main-content { margin: 0 !important; }
     .content { padding: 0 !important; }
-    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ddd; }
+    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5dcc8; }
+    .print-report-header, .print-report-footer { display: block !important; }
+    .content::after { opacity: .035 !important; }
 }
 </style>
 
+<?php require __DIR__ . '/../includes/report_print_footer.php'; ?>
 <?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>
 </div></div>
 </body></html>

@@ -103,7 +103,12 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 .filter-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; margin-top:12px }
 .rank-num { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.82rem; color:#fff }
 </style>
-
+<?php
+$reportTitle = 'تقرير التبكير والموظفين المتميزين';
+$reportSubtitle = 'نظام الحضور والانصراف';
+$reportMeta = ["الفترة: {$dateFrom} إلى {$dateTo}"];
+require __DIR__ . '/../includes/report_print_header.php';
+?>
 <!-- الفلاتر -->
 <div class="report-filter">
     <form method="GET" class="filter-bar">
@@ -254,5 +259,17 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 })();
 </script>
 
+<style>
+@media print {
+    .sidebar, .topbar, .bottom-nav, form, .no-print { display: none !important; }
+    .main-content { margin: 0 !important; }
+    .content { padding: 0 !important; }
+    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5dcc8; }
+    .print-report-header, .print-report-footer { display: block !important; }
+    .content::after { opacity: .035 !important; }
+}
+</style>
+
+<?php require __DIR__ . '/../includes/report_print_footer.php'; ?>
 <?php require_once __DIR__ . '/../includes/admin_footer.php'; ?>
 </div></div></body></html>

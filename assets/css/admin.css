@@ -844,3 +844,260 @@ hr { border:none; border-top:1px solid var(--border); margin:20px 0; }
 .theme-toggle:hover { background:var(--border); }
 html:not(.dark) .icon-sun  { display:none; }
 html.dark        .icon-moon { display:none; }
+
+/* =============================================================
+   Royal Premium Report Enhancements
+   ============================================================= */
+
+:root {
+    --royal-navy: #1a2744;
+    --royal-gold: #c9a84c;
+    --royal-gold-dark: #b8962e;
+    --royal-gold-light: #e8d9a0;
+    --royal-cream: #faf7f0;
+    --royal-gold-bg: #fdf8ed;
+}
+
+/* ── Watermark for report content area ── */
+.content {
+    position: relative;
+}
+.content::after {
+    content: '';
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 350px; height: 350px;
+    background: url('../images/loogo.png') center/contain no-repeat;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity .3s;
+}
+
+/* ── Report Filter Premium ── */
+.report-filter {
+    border-color: var(--royal-gold-light);
+    background: linear-gradient(180deg, var(--surface) 0%, var(--royal-gold-bg) 100%);
+}
+.report-filter::before {
+    background: linear-gradient(90deg, var(--royal-gold-dark), var(--royal-gold), var(--royal-gold-light), var(--royal-gold), var(--royal-gold-dark));
+    height: 3px;
+}
+
+/* ── Report Stats Premium ── */
+.report-stat {
+    border-color: #e5dcc8;
+}
+.report-stat::after {
+    opacity: .8;
+}
+
+/* ── Report Table Premium ── */
+.report-table-wrap {
+    border-color: #e5dcc8;
+}
+.report-table-wrap thead th {
+    background: linear-gradient(180deg, #f7f3e8 0%, #f0ead8 100%);
+    color: var(--royal-navy);
+    border-bottom: 2px solid var(--royal-gold);
+    font-weight: 700;
+    letter-spacing: .03em;
+}
+.report-table-wrap tbody tr:nth-child(even) {
+    background: #fdfbf6;
+}
+.report-table-wrap tbody tr:hover {
+    background: var(--royal-gold-bg);
+}
+
+/* ── Chart Card Premium ── */
+.chart-card {
+    border-color: #e5dcc8;
+}
+.chart-card-title {
+    border-bottom-color: var(--royal-gold-light);
+    color: var(--royal-navy);
+}
+
+/* ── Monthly Table Premium ── */
+.monthly-table-wrap table thead th {
+    background: linear-gradient(180deg, #f7f3e8 0%, #f0ead8 100%);
+    color: var(--royal-navy);
+    border-bottom: 2px solid var(--royal-gold);
+}
+
+/* ── Export Button Premium ── */
+.btn-export {
+    border-color: var(--royal-gold-light);
+    background: var(--royal-gold-bg);
+    color: var(--royal-gold-dark);
+}
+.btn-export:hover {
+    background: var(--royal-gold);
+    color: #fff;
+    border-color: var(--royal-gold);
+}
+
+/* ── Report Print Header (injected via PHP) ── */
+.print-report-header {
+    display: none;
+    background: linear-gradient(135deg, var(--royal-navy) 0%, #1f3554 50%, #243454 100%);
+    color: #fff;
+    padding: 0;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+}
+.print-report-header::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; left: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--royal-gold-dark), var(--royal-gold), var(--royal-gold-light), var(--royal-gold), var(--royal-gold-dark));
+}
+.print-report-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0; left: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--royal-gold-dark), var(--royal-gold), var(--royal-gold-light), var(--royal-gold), var(--royal-gold-dark));
+}
+.prh-inner {
+    padding: 20px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+.prh-logo {
+    width: 55px; height: 55px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(201,168,76,.4));
+}
+.prh-center {
+    text-align: center;
+    flex: 1;
+}
+.prh-title {
+    font-size: 1.3rem; font-weight: 900;
+    color: var(--royal-gold-light);
+    text-shadow: 0 1px 3px rgba(0,0,0,.3);
+    letter-spacing: .5px;
+}
+.prh-subtitle {
+    font-size: .82rem;
+    color: rgba(255,255,255,.65);
+    margin-top: 3px;
+    font-weight: 300;
+}
+.prh-divider {
+    width: 60px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--royal-gold), transparent);
+    margin: 8px auto 0;
+}
+.prh-date {
+    text-align: center;
+    background: rgba(201,168,76,.12);
+    border: 1px solid rgba(201,168,76,.3);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: .85rem;
+    color: var(--royal-gold-light);
+    font-weight: 700;
+}
+.prh-meta {
+    background: rgba(0,0,0,.15);
+    padding: 8px 28px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-size: .76rem;
+    color: rgba(255,255,255,.7);
+    justify-content: center;
+}
+.prh-meta span {
+    display: inline-flex; align-items: center; gap: 5px;
+}
+.prh-meta span::before {
+    content: '';
+    width: 4px; height: 4px;
+    background: var(--royal-gold);
+    border-radius: 50%;
+}
+
+/* ── Report Print Footer ── */
+.print-report-footer {
+    display: none;
+    border-top: 2px solid var(--royal-gold);
+    background: linear-gradient(180deg, #fdfbf6 0%, #f7f3e8 100%);
+    padding: 20px 28px;
+    margin-top: 20px;
+    font-size: .8rem;
+    color: #6b6556;
+}
+.prf-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.prf-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.prf-brand img { width: 24px; height: 24px; object-fit: contain; }
+.prf-brand span { font-weight: 800; color: var(--royal-navy); font-size: .84rem; }
+.prf-info { line-height: 1.8; }
+.prf-sig {
+    text-align: center;
+    min-width: 140px;
+}
+.prf-sig-line {
+    border-top: 2px solid var(--royal-navy);
+    margin-top: 45px;
+    padding-top: 6px;
+    font-weight: 700;
+    color: var(--royal-navy);
+    font-size: .76rem;
+}
+
+/* ── Print Overrides for Premium Reports ── */
+@media print {
+    .print-report-header,
+    .print-report-footer { display: block !important; }
+
+    .content::after {
+        opacity: .035 !important;
+        position: fixed;
+        z-index: 9999;
+    }
+
+    .report-filter { display: none !important; }
+
+    .report-table-wrap {
+        box-shadow: none;
+        border: 1px solid #e5dcc8;
+    }
+    .report-table-wrap thead th {
+        background: #f7f3e8 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .report-stat {
+        box-shadow: none;
+        border: 1px solid #e5dcc8;
+    }
+    .print-report-header {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .print-report-footer {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

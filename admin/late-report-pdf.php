@@ -141,32 +141,56 @@ function fmtMins(int $m): string
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Tajawal',Arial,sans-serif; font-size:12px; color:#1E293B; background:#fff; }
+    body {
+        font-family:'Tajawal',Arial,sans-serif;
+        font-size:12px;
+        color:#1E293B;
+        background:#faf7f0;
+        position: relative;
+    }
+    body::before {
+        content: '';
+        position: fixed;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 350px; height: 350px;
+        background: url('../assets/images/loogo.png') center/contain no-repeat;
+        opacity: .04;
+        pointer-events: none;
+        z-index: 0;
+    }
 
-    .no-print { text-align:center; padding:16px; background:#F1F5F9; border-bottom:1px solid #E2E8F0; }
-    .no-print button { padding:10px 28px; background:#2563EB; color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer; font-family:inherit; margin:0 4px; }
-    .no-print button.btn-green { background:#059669; }
-    .no-print button.btn-gray { background:#64748B; }
+    .no-print { text-align:center; padding:16px; background:linear-gradient(135deg,#1a2744,#243454); border-bottom:3px solid #c9a84c; }
+    .no-print button { padding:10px 28px; background:#c9a84c; color:#1a2744; border:none; border-radius:8px; font-size:14px; cursor:pointer; font-family:inherit; margin:0 4px; font-weight:700; }
+    .no-print button.btn-green { background:#059669; color:#fff; }
+    .no-print button.btn-gray { background:#64748B; color:#fff; }
 
-    .section { padding:24px; }
+    .section { padding:24px; position:relative; z-index:1; background:#fff; max-width:900px; margin:16px auto; border:1px solid #e5dcc8; }
     .page-break { page-break-after: always; break-after: page; }
 
-    .report-header { background:linear-gradient(135deg,#1E293B 0%,#334155 100%); color:#fff; border-radius:10px; padding:20px 24px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:flex-start; }
-    .report-header h1 { font-size:18px; font-weight:700; margin-bottom:4px; }
-    .report-header .sub { font-size:11px; opacity:.8; margin-top:4px; }
-    .report-header .meta { text-align:left; font-size:11px; opacity:.85; }
+    .report-header { background:linear-gradient(135deg,#1a2744 0%,#243454 100%); color:#fff; border-radius:0; padding:0; margin-bottom:18px; position:relative; overflow:hidden; }
+    .report-header::before,.report-header::after { content:''; position:absolute; right:0; left:0; height:4px; background:linear-gradient(90deg,#b8962e,#c9a84c,#e8d9a0,#c9a84c,#b8962e); }
+    .report-header::before { top:0; }
+    .report-header::after { bottom:0; }
+    .rh-pdf-inner { padding:20px 24px; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+    .rh-pdf-logo { width:50px; height:50px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(201,168,76,.4)); }
+    .rh-pdf-center { text-align:center; flex:1; }
+    .report-header h1 { font-size:18px; font-weight:900; margin-bottom:4px; color:#e8d9a0; }
+    .report-header .sub { font-size:11px; color:rgba(255,255,255,.6); margin-top:4px; }
+    .rh-pdf-divider { width:60px; height:1px; background:linear-gradient(90deg,transparent,#c9a84c,transparent); margin:6px auto 0; }
+    .report-header .meta { text-align:left; font-size:11px; color:rgba(255,255,255,.7); }
 
     .summary-box { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
-    .summary-card { flex:1; min-width:100px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:10px 14px; text-align:center; }
-    .summary-card .val { font-size:22px; font-weight:700; color:#1E293B; }
-    .summary-card .lbl { font-size:10px; color:#64748B; margin-top:2px; }
+    .summary-card { flex:1; min-width:100px; background:#fdfbf6; border:1px solid #e5dcc8; border-radius:8px; padding:10px 14px; text-align:center; }
+    .summary-card .val { font-size:22px; font-weight:700; color:#1a2744; }
+    .summary-card .lbl { font-size:10px; color:#8b8778; margin-top:2px; }
 
-    .section-title { font-size:13px; font-weight:700; color:#334155; margin:16px 0 8px; padding-bottom:6px; border-bottom:2px solid #E2E8F0; }
+    .section-title { font-size:13px; font-weight:700; color:#1a2744; margin:16px 0 8px; padding-bottom:6px; border-bottom:2px solid #c9a84c; }
 
     table { width:100%; border-collapse:collapse; margin-bottom:16px; }
-    th { background:#F1F5F9; color:#475569; font-weight:600; font-size:10.5px; padding:7px 10px; text-align:right; border:1px solid #E2E8F0; }
-    td { padding:6px 10px; border:1px solid #E2E8F0; font-size:11px; vertical-align:middle; }
-    tr:nth-child(even) td { background:#F8FAFC; }
+    th { background:linear-gradient(180deg,#f7f3e8,#f0ead8); color:#1a2744; font-weight:700; font-size:10.5px; padding:7px 10px; text-align:right; border:1px solid #e5dcc8; border-bottom:2px solid #c9a84c; }
+    td { padding:6px 10px; border:1px solid #e5dcc8; font-size:11px; vertical-align:middle; }
+    tr:nth-child(even) td { background:#fdfbf6; }
 
     .late-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; }
     .late-low     { background:#FEF3C7; color:#92400E; }
@@ -178,18 +202,22 @@ function fmtMins(int $m): string
     .badge-yellow{ background:#FEF3C7; color:#92400E; padding:2px 7px; border-radius:8px; font-size:10px; }
     .badge-red   { background:#FEE2E2; color:#991B1B; padding:2px 7px; border-radius:8px; font-size:10px; }
 
-    .footer-row { display:flex; justify-content:space-between; font-size:10px; color:#94A3B8; margin-top:12px; padding-top:8px; border-top:1px solid #E2E8F0; }
+    .footer-row { display:flex; justify-content:space-between; font-size:10px; color:#8b8778; margin-top:16px; padding-top:10px; border-top:2px solid #c9a84c; background:#fdfbf6; padding:10px 12px; border-radius:0 0 0 0; }
 
-    .empty-section { text-align:center; padding:30px; color:#94A3B8; font-size:13px; border:1px dashed #E2E8F0; border-radius:8px; }
+    .empty-section { text-align:center; padding:30px; color:#8b8778; font-size:13px; border:1px dashed #e5dcc8; border-radius:8px; }
 
     @media print {
-        body { font-size:11px; }
+        body { font-size:11px; background:#fff; }
+        body::before { position:fixed; opacity:.035; }
         .no-print { display:none !important; }
-        .section { padding:12px; }
+        .section { padding:12px; border:none; margin:0; max-width:none; box-shadow:none; }
         .report-header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        .report-header::before,.report-header::after { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        th { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
         .summary-card  { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
         .late-badge    { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
         .badge-green,.badge-yellow,.badge-red { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        .footer-row { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
         @page { size:A4; margin:1.5cm 1cm; }
     }
 </style>
@@ -217,16 +245,20 @@ function fmtMins(int $m): string
 
     <!-- رأس التقرير -->
     <div class="report-header">
-        <div>
-            <h1><?= $section['title'] ?></h1>
-            <?php if ($section['subtitle']): ?>
-                <div class="sub"><?= $section['subtitle'] ?></div>
-            <?php endif; ?>
-            <div class="sub">الفترة: <?= $dateFrom ?> — <?= $dateTo ?></div>
-        </div>
-        <div class="meta">
-            <div>نظام الحضور والانصراف</div>
-            <div style="margin-top:4px">تاريخ الإنشاء: <?= date('Y-m-d H:i') ?></div>
+        <div class="rh-pdf-inner">
+            <img src="../assets/images/loogo.png" class="rh-pdf-logo" alt="">
+            <div class="rh-pdf-center">
+                <h1><?= $section['title'] ?></h1>
+                <?php if ($section['subtitle']): ?>
+                    <div class="sub"><?= $section['subtitle'] ?></div>
+                <?php endif; ?>
+                <div class="sub">الفترة: <?= $dateFrom ?> — <?= $dateTo ?></div>
+                <div class="rh-pdf-divider"></div>
+            </div>
+            <div class="meta">
+                <div>نظام الحضور والانصراف</div>
+                <div style="margin-top:4px">تاريخ الإنشاء: <?= date('Y-m-d H:i') ?></div>
+            </div>
         </div>
     </div>
 
@@ -327,7 +359,7 @@ function fmtMins(int $m): string
                 <td><strong><?= htmlspecialchars($r['employee_name']) ?></strong></td>
                 <td style="font-size:10px"><?= htmlspecialchars($r['branch_name'] ?? '-') ?></td>
                 <td style="font-family:monospace;color:#64748B"><?= $r['work_start_time'] ?? '-' ?></td>
-                <td style="font-family:monospace;font-weight:700;color:#2563EB"><?= date('H:i:s', strtotime($r['checkin_time'])) ?></td>
+                <td style="font-family:monospace;font-weight:700;color:#1a2744"><?= date('H:i:s', strtotime($r['checkin_time'])) ?></td>
                 <td><span class="late-badge <?= $cls ?>"><?= fmtMins($lm) ?></span></td>
             </tr>
         <?php endforeach; ?>
