@@ -223,13 +223,24 @@ require_once __DIR__ . '/../includes/admin_layout.php';
 <style>
 .cols-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; margin:12px 0 }
 .col-check { display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--surface2); border-radius:8px; cursor:pointer; transition:.2s; border:2px solid transparent; font-size:.85rem }
-.col-check:hover { border-color:var(--primary) }
-.col-check.checked { border-color:var(--primary); background:rgba(59,130,246,.08) }
-.col-check input { accent-color:var(--primary) }
+.col-check:hover { border-color:var(--royal-gold) }
+.col-check.checked { border-color:var(--royal-gold); background:var(--royal-gold-bg) }
+.col-check input { accent-color:var(--royal-gold) }
+.cols-actions { display:flex; gap:8px; margin-bottom:8px }
+.cols-actions button { padding:4px 12px; border-radius:6px; border:1px solid var(--surface3); background:var(--surface1); cursor:pointer; font-size:.78rem; font-weight:600; color:var(--text2); transition:.2s; font-family:inherit }
+.cols-actions button:hover { border-color:var(--royal-gold); color:var(--royal-gold) }
 .saved-list { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px }
-.saved-tag { padding:6px 14px; border-radius:20px; background:var(--surface2); border:1px solid var(--surface3); font-size:.82rem; display:flex; align-items:center; gap:6px; cursor:pointer; transition:.2s }
-.saved-tag:hover { border-color:var(--primary) }
+.saved-tag { padding:6px 14px; border-radius:20px; background:var(--royal-gold-bg); border:1px solid rgba(201,168,76,.3); font-size:.82rem; display:flex; align-items:center; gap:6px; cursor:pointer; transition:.2s; color:var(--royal-navy) }
+.saved-tag:hover { border-color:var(--royal-gold); box-shadow:0 2px 8px rgba(201,168,76,.2) }
 .saved-tag .del-btn { color:#EF4444; font-weight:700; cursor:pointer; font-size:.9rem }
+.builder-search { display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface1); border:1px solid var(--surface3); border-radius:10px; margin-bottom:12px }
+.builder-search input { flex:1; border:none; background:transparent; font-size:.88rem; outline:none; font-family:inherit; color:var(--text1) }
+.builder-search input::placeholder { color:var(--text3) }
+.builder-search .search-icon { color:var(--text3); flex-shrink:0 }
+.builder-search .result-count { font-size:.78rem; color:var(--text3); white-space:nowrap }
+.totals-row td { background:var(--royal-gold-bg) !important; font-weight:800; color:var(--royal-navy); border-top:2px solid var(--royal-gold) !important }
+.highlight-row { background:rgba(201,168,76,.06) }
+.att-table tbody tr:hover { background:rgba(201,168,76,.08) }
 </style>
 <?php
 $reportTitle    = 'التقرير المخصص';
@@ -289,6 +300,10 @@ require __DIR__ . '/../includes/report_print_header.php';
         <!-- اختيار الأعمدة -->
         <div style="grid-column:1/-1">
             <label style="font-weight:600;margin-bottom:8px;display:block">اختر الأعمدة المطلوبة:</label>
+            <div class="cols-actions">
+                <button type="button" onclick="toggleAllCols(true)">✅ تحديد الكل</button>
+                <button type="button" onclick="toggleAllCols(false)">❌ إلغاء الكل</button>
+            </div>
             <div class="cols-grid">
                 <?php foreach ($availableColumns as $colKey => $colLabel): ?>
                 <label class="col-check <?= in_array($colKey, $selectedCols) ? 'checked' : '' ?>">
@@ -309,16 +324,36 @@ require __DIR__ . '/../includes/report_print_header.php';
 </div>
 
 <!-- الإحصائيات -->
+<?php
+$totalPresent  = array_sum(array_column($reportData, 'present_days'));
+$totalAbsent   = array_sum(array_column($reportData, 'absent_days'));
+$totalLate     = array_sum(array_column($reportData, 'late_days'));
+$totalLateMin  = array_sum(array_column($reportData, 'late_minutes'));
+$totalEarlyD   = array_sum(array_column($reportData, 'early_days'));
+$totalEarlyMin = array_sum(array_column($reportData, 'early_minutes'));
+$totalLeave    = array_sum(array_column($reportData, 'leave_days'));
+$avgAttRate    = count($reportData) > 0 ? round(array_sum(array_map(fn($r) => (float)$r['attendance_rate'], $reportData)) / count($reportData), 1) : 0;
+$totalWorkM    = array_sum(array_column($reportData, '_sort_work'));
+?>
 <div class="report-stats">
     <div class="report-stat accent-blue"><div class="report-stat-icon is-blue"><?= svgIcon('employees', 24) ?></div><div><div class="report-stat-value"><?= count($reportData) ?></div><div class="report-stat-label">موظف</div></div></div>
     <div class="report-stat accent-green"><div class="report-stat-icon is-green"><?= svgIcon('calendar', 24) ?></div><div><div class="report-stat-value"><?= $workingDays ?></div><div class="report-stat-label">يوم عمل</div></div></div>
+    <div class="report-stat accent-green"><div class="report-stat-icon is-green"><?= svgIcon('tick', 24) ?></div><div><div class="report-stat-value"><?= $avgAttRate ?>%</div><div class="report-stat-label">متوسط الحضور</div></div></div>
+    <div class="report-stat accent-red"><div class="report-stat-icon is-red"><?= svgIcon('x-circle', 24) ?></div><div><div class="report-stat-value"><?= $totalAbsent ?></div><div class="report-stat-label">إجمالي الغياب</div></div></div>
     <div class="report-stat accent-orange"><div class="report-stat-icon is-orange"><?= svgIcon('chart', 24) ?></div><div><div class="report-stat-value"><?= count($selectedCols) ?></div><div class="report-stat-label">أعمدة مختارة</div></div></div>
+</div>
+
+<!-- بحث في النتائج -->
+<div class="builder-search no-print">
+    <span class="search-icon"><?= svgIcon('lookup', 18) ?></span>
+    <input type="text" id="tableSearch" placeholder="بحث في النتائج..." oninput="filterTable()">
+    <span class="result-count" id="resultCount"><?= count($reportData) ?> نتيجة</span>
 </div>
 
 <!-- الجدول -->
 <div class="report-table-wrap">
-    <div class="card-header" style="padding:16px 20px;margin:0;border-bottom:2px solid var(--surface3)">
-        <span class="card-title"><span class="card-title-bar"></span> <?= svgIcon('document', 18) ?> نتائج التقرير</span>
+    <div class="card-header" style="padding:16px 20px;margin:0;border-bottom:2px solid var(--royal-gold)">
+        <span class="card-title"><span class="card-title-bar"></span> <?= svgIcon('document', 18) ?> نتائج التقرير المخصص</span>
         <span class="badge badge-blue"><?= count($reportData) ?> موظف</span>
     </div>
     <div style="overflow-x:auto">
@@ -326,27 +361,57 @@ require __DIR__ . '/../includes/report_print_header.php';
         <thead><tr>
             <th>#</th>
             <?php foreach ($selectedCols as $c): ?>
-            <th style="cursor:pointer" onclick="sortTable(this)"><?= $availableColumns[$c] ?> ⇅</th>
+            <th style="cursor:pointer;user-select:none" onclick="sortTable(this)" data-col="<?= $c ?>"><?= $availableColumns[$c] ?> <span style="opacity:.4">⇅</span></th>
             <?php endforeach; ?>
         </tr></thead>
         <tbody>
         <?php if (empty($reportData)): ?>
-            <tr><td colspan="<?= count($selectedCols) + 1 ?>" class="report-empty" style="padding:40px"><p>لا يوجد بيانات</p></td></tr>
+            <tr><td colspan="<?= count($selectedCols) + 1 ?>" class="report-empty" style="padding:40px"><p>لا يوجد بيانات — اختر الفلاتر ثم اضغط "إنشاء التقرير"</p></td></tr>
         <?php else: ?>
             <?php foreach ($reportData as $i => $row): ?>
-            <tr>
+            <tr class="data-row">
                 <td><?= $i + 1 ?></td>
                 <?php foreach ($selectedCols as $c): ?>
                 <td><?php
                     $v = $row[$c];
                     if (in_array($c, ['late_days', 'late_minutes', 'absent_days']) && $v > 0) echo '<span class="badge badge-red">' . $v . '</span>';
-                    elseif (in_array($c, ['early_days', 'early_minutes', 'present_days']) && $v > 0) echo '<span class="badge badge-green">' . $v . '</span>';
-                    elseif ($c === 'name') echo '<strong>' . htmlspecialchars($v) . '</strong>';
+                    elseif (in_array($c, ['early_days', 'early_minutes']) && $v > 0) echo '<span class="badge badge-green">' . $v . '</span>';
+                    elseif ($c === 'present_days' && $v > 0) echo '<span class="badge badge-green">' . $v . '</span>';
+                    elseif ($c === 'attendance_rate') {
+                        $pct = (float)$v;
+                        $cls = $pct >= 90 ? 'badge-green' : ($pct >= 70 ? 'badge-yellow' : 'badge-red');
+                        echo '<span class="badge ' . $cls . '">' . htmlspecialchars($v) . '</span>';
+                    } elseif ($c === 'punctuality') {
+                        $pct = (float)$v;
+                        $cls = $pct >= 90 ? 'badge-green' : ($pct >= 70 ? 'badge-yellow' : 'badge-red');
+                        echo '<span class="badge ' . $cls . '">' . htmlspecialchars($v) . '</span>';
+                    } elseif ($c === 'name') echo '<strong>' . htmlspecialchars($v) . '</strong>';
+                    elseif ($c === 'leave_days' && $v > 0) echo '<span class="badge badge-yellow">' . $v . '</span>';
                     else echo htmlspecialchars($v);
                 ?></td>
                 <?php endforeach; ?>
             </tr>
             <?php endforeach; ?>
+            <!-- صف الإجمالي -->
+            <tr class="totals-row">
+                <td><strong>Σ</strong></td>
+                <?php foreach ($selectedCols as $c): ?>
+                <td><?php
+                    if ($c === 'name') echo '<strong>الإجمالي</strong>';
+                    elseif ($c === 'present_days') echo $totalPresent;
+                    elseif ($c === 'absent_days') echo $totalAbsent;
+                    elseif ($c === 'late_days') echo $totalLate;
+                    elseif ($c === 'late_minutes') echo $totalLateMin;
+                    elseif ($c === 'early_days') echo $totalEarlyD;
+                    elseif ($c === 'early_minutes') echo $totalEarlyMin;
+                    elseif ($c === 'leave_days') echo $totalLeave;
+                    elseif ($c === 'work_hours') echo sprintf('%d:%02d', intdiv($totalWorkM, 60), $totalWorkM % 60);
+                    elseif ($c === 'attendance_rate') echo $avgAttRate . '%';
+                    elseif (in_array($c, ['job_title', 'branch', 'avg_hours', 'ot_hours', 'punctuality'])) echo '-';
+                    else echo '-';
+                ?></td>
+                <?php endforeach; ?>
+            </tr>
         <?php endif; ?>
         </tbody>
     </table>
@@ -356,27 +421,58 @@ require __DIR__ . '/../includes/report_print_header.php';
 <script>
 function saveReport() {
     const name = prompt('اسم التقرير المحفوظ:');
-    if (!name) return;
+    if (!name || !name.trim()) return;
     const form = document.createElement('form');
     form.method = 'POST';
-    form.innerHTML = `
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(generateCsrfToken()) ?>">
-        <input type="hidden" name="action" value="save_report">
-        <input type="hidden" name="report_name" value="${name}">
-        <input type="hidden" name="filters" value="${new URLSearchParams(new FormData(document.getElementById('builderForm'))).toString()}">
-        <input type="hidden" name="columns" value="<?= implode(',', $selectedCols) ?>">
-        <input type="hidden" name="query_string" value="${window.location.search.substring(1)}">
-    `;
+    const fields = {
+        csrf_token: <?= json_encode(generateCsrfToken()) ?>,
+        action: 'save_report',
+        report_name: name.trim(),
+        filters: new URLSearchParams(new FormData(document.getElementById('builderForm'))).toString(),
+        columns: <?= json_encode(implode(',', $selectedCols)) ?>,
+        query_string: window.location.search.substring(1)
+    };
+    for (const [k, v] of Object.entries(fields)) {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = k; inp.value = v;
+        form.appendChild(inp);
+    }
     document.body.appendChild(form);
     form.submit();
+}
+
+function toggleAllCols(state) {
+    document.querySelectorAll('.col-check input[type=checkbox]').forEach(cb => {
+        cb.checked = state;
+        cb.parentElement.classList.toggle('checked', state);
+    });
+}
+
+function filterTable() {
+    const q = document.getElementById('tableSearch').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#reportTable tbody tr.data-row');
+    let vis = 0;
+    rows.forEach(row => {
+        const txt = row.textContent.toLowerCase();
+        const show = !q || txt.includes(q);
+        row.style.display = show ? '' : 'none';
+        if (show) vis++;
+    });
+    document.getElementById('resultCount').textContent = vis + ' نتيجة';
+    const totals = document.querySelector('.totals-row');
+    if (totals) totals.style.display = q ? 'none' : '';
 }
 
 function sortTable(th) {
     const table = document.getElementById('reportTable');
     const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const rows = Array.from(tbody.querySelectorAll('tr.data-row'));
     const col = Array.from(th.parentElement.children).indexOf(th);
     const dir = th.dataset.dir === 'asc' ? 'desc' : 'asc';
+    // Reset all arrows
+    th.parentElement.querySelectorAll('th').forEach(h => { const s = h.querySelector('span'); if(s) s.textContent = '⇅'; });
+    const arrow = th.querySelector('span');
+    if (arrow) arrow.textContent = dir === 'asc' ? '↑' : '↓';
     th.dataset.dir = dir;
     rows.sort((a, b) => {
         let va = a.cells[col]?.textContent.trim() || '';
@@ -387,6 +483,9 @@ function sortTable(th) {
         return dir === 'asc' ? va.localeCompare(vb, 'ar') : vb.localeCompare(va, 'ar');
     });
     rows.forEach(r => tbody.appendChild(r));
+    // Move totals row to end
+    const totals = tbody.querySelector('.totals-row');
+    if (totals) tbody.appendChild(totals);
 }
 
 // تحميل الورديات
@@ -412,12 +511,14 @@ document.getElementById('branchSelect')?.addEventListener('change', function() {
 </script>
 
 <style>
+@page { size: A4; margin: 12mm 10mm 15mm 10mm; }
 @media print {
-    .sidebar, .topbar, .bottom-nav, form, .no-print, .report-filter, .filter-grid, .cols-grid, .saved-list { display: none !important; }
+    .sidebar, .topbar, .bottom-nav, form, .no-print, .report-filter, .filter-grid, .cols-grid, .saved-list, .cols-actions, .builder-search { display: none !important; }
     .main-content { margin: 0 !important; }
     .content { padding: 0 !important; }
-    .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5dcc8; }
+    .card, .report-table-wrap { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5dcc8; }
     .print-report-header, .print-report-footer { display: block !important; }
+    .totals-row td { background: #f7f3e8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 </style>
 
