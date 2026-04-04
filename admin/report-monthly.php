@@ -61,22 +61,56 @@ if ($filterShift > 0) {
 }
 
 $attStmt = db()->prepare("
-    SELECT a.employee_id, a.attendance_date,
-           MIN(CASE WHEN a.type='in' THEN a.timestamp END) AS first_in,
-           MAX(CASE WHEN a.type='out' THEN a.timestamp END) AS last_out,
-           MIN(CASE WHEN a.type='in' THEN a.late_minutes END) AS late_minutes
+    SELECT a.employee_id, a.attendance_date, a.type, a.timestamp, a.late_minutes
     FROM attendances a
     WHERE a.attendance_date BETWEEN ? AND ?
     $shiftTimeCond
-    GROUP BY a.employee_id, a.attendance_date
+    ORDER BY a.timestamp ASC
 ");
 $attStmt->execute(array_merge([$startDate, $endDate], $shiftTimeParams));
-$attData = $attStmt->fetchAll();
+$attDataRaw = $attStmt->fetchAll();
 
-// ترتيب البيانات: [emp_id][date] => row
+// جلب ورديات الفروع
+$allBranchShifts = [];
+$bsStmt = db()->query("SELECT branch_id, shift_number, shift_start, shift_end FROM branch_shifts WHERE is_active = 1 ORDER BY branch_id, shift_number");
+foreach ($bsStmt->fetchAll() as $s) {
+    $allBranchShifts[$s['branch_id']][] = $s;
+}
+$maxShifts = 1;
+foreach ($allBranchShifts as $bs) {
+    $maxShifts = max($maxShifts, count($bs));
+}
+
+// بناء خريطة موظف => فرع
+$empBranchMap = [];
+foreach ($employees as $emp) {
+    $empBranchMap[$emp['id']] = $emp['branch_id'] ?? null;
+}
+
+// ترتيب البيانات: [emp_id][date][shift_number] => {in, out, late}
 $attMap = [];
-foreach ($attData as $row) {
-    $attMap[$row['employee_id']][$row['attendance_date']] = $row;
+foreach ($attDataRaw as $row) {
+    $eid = $row['employee_id'];
+    $dateStr = $row['attendance_date'];
+    $branchId2 = $empBranchMap[$eid] ?? null;
+    $branchShifts = $allBranchShifts[$branchId2] ?? [
+        ['shift_number' => 1, 'shift_start' => getSystemSetting('work_start_time', '08:00'), 'shift_end' => getSystemSetting('work_end_time', '16:00')]
+    ];
+    $shiftNum = assignTimeToShift(date('H:i', strtotime($row['timestamp'])), $branchShifts);
+
+    if (!isset($attMap[$eid][$dateStr])) {
+        $attMap[$eid][$dateStr] = ['_present' => true, '_late' => 0];
+        for ($sn = 1; $sn <= 3; $sn++) {
+            $attMap[$eid][$dateStr][$sn] = ['in' => null, 'out' => null, 'late' => 0];
+        }
+    }
+    if ($row['type'] === 'in' && !$attMap[$eid][$dateStr][$shiftNum]['in']) {
+        $attMap[$eid][$dateStr][$shiftNum]['in'] = $row['timestamp'];
+        $attMap[$eid][$dateStr][$shiftNum]['late'] = (int)($row['late_minutes'] ?? 0);
+        $attMap[$eid][$dateStr]['_late'] = max($attMap[$eid][$dateStr]['_late'], (int)($row['late_minutes'] ?? 0));
+    } elseif ($row['type'] === 'out') {
+        $attMap[$eid][$dateStr][$shiftNum]['out'] = $row['timestamp'];
+    }
 }
 
 // الإجازات المعتمدة
@@ -161,7 +195,7 @@ foreach ($employees as $emp) {
         
         if (isset($attMap[$emp['id']][$dateStr])) {
             $totalPresent++;
-            $late = (int)($attMap[$emp['id']][$dateStr]['late_minutes'] ?? 0);
+            $late = (int)($attMap[$emp['id']][$dateStr]['_late'] ?? 0);
             if ($late > 0) { $totalLate++; $totalLateMin += $late; }
         } elseif (isset($leaveMap[$emp['id']][$dateStr])) {
             // إجازة - لا يحسب غياب
@@ -208,7 +242,7 @@ foreach ($employees as $emp) {
             if ($dayOfWeek == 5) continue;
             if (isset($attMap[$emp['id']][$dateStr])) {
                 $empPresent++;
-                if (($attMap[$emp['id']][$dateStr]['late_minutes'] ?? 0) > 0) $empLate++;
+                if (($attMap[$emp['id']][$dateStr]['_late'] ?? 0) > 0) $empLate++;
             } elseif (isset($leaveMap[$emp['id']][$dateStr])) {
                 $empLeave++;
             } else {
@@ -224,13 +258,15 @@ foreach ($employees as $emp) {
         </div>
     </div>
     <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:.8rem;min-width:650px">
+        <table style="width:100%;border-collapse:collapse;font-size:.8rem;min-width:<?= 200 + $maxShifts * 200 ?>px">
             <thead>
                 <tr style="background:var(--surface2,#F8FAFC)">
                     <th style="padding:8px;text-align:center;width:34px">اليوم</th>
                     <th style="padding:8px;text-align:center">الحالة</th>
-                    <th style="padding:8px;text-align:center">أول دخول</th>
-                    <th style="padding:8px;text-align:center">آخر خروج</th>
+                    <?php for ($sn = 1; $sn <= $maxShifts; $sn++): ?>
+                    <th style="padding:8px;text-align:center">حضور و<?= $sn ?></th>
+                    <th style="padding:8px;text-align:center">انصراف و<?= $sn ?></th>
+                    <?php endfor; ?>
                     <th style="padding:8px;text-align:center">التأخير</th>
                 </tr>
             </thead>
@@ -251,7 +287,7 @@ foreach ($employees as $emp) {
                 } elseif ($isFriday) {
                     $statusLabel = 'عطلة'; $statusCls = 'color:var(--text3)';
                 } elseif ($att) {
-                    $late = (int)($att['late_minutes'] ?? 0);
+                    $late = (int)($att['_late'] ?? 0);
                     if ($late > 0) { $statusLabel = 'متأخر'; $statusCls = 'color:#D97706;font-weight:600'; }
                     else { $statusLabel = 'حاضر'; $statusCls = 'color:#10B981;font-weight:600'; }
                 } elseif ($leave) {
@@ -265,10 +301,12 @@ foreach ($employees as $emp) {
                 <tr style="border-bottom:1px solid var(--border-color,#E2E8F0);<?= $isFriday ? 'background:var(--surface2,#F8FAFC);opacity:.6' : '' ?>">
                     <td style="padding:6px 8px;text-align:center;font-weight:600"><?= $d ?> <small style="color:var(--text3)"><?= $dayName ?></small></td>
                     <td style="padding:6px 8px;text-align:center;<?= $statusCls ?>"><?= $statusLabel ?></td>
-                    <td style="padding:6px 8px;text-align:center;direction:ltr"><?= $att && $att['first_in'] ? date('h:i A', strtotime($att['first_in'])) : '—' ?></td>
-                    <td style="padding:6px 8px;text-align:center;direction:ltr"><?= $att && $att['last_out'] ? date('h:i A', strtotime($att['last_out'])) : '—' ?></td>
-                    <td style="padding:6px 8px;text-align:center;<?= ($att && ($att['late_minutes'] ?? 0) > 0) ? 'color:#D97706;font-weight:600' : '' ?>">
-                        <?= $att && ($att['late_minutes'] ?? 0) > 0 ? $att['late_minutes'] . ' د' : '—' ?>
+                    <?php for ($sn = 1; $sn <= $maxShifts; $sn++): ?>
+                    <td style="padding:6px 8px;text-align:center;direction:ltr"><?= $att && isset($att[$sn]) && $att[$sn]['in'] ? date('h:i A', strtotime($att[$sn]['in'])) : '—' ?></td>
+                    <td style="padding:6px 8px;text-align:center;direction:ltr"><?= $att && isset($att[$sn]) && $att[$sn]['out'] ? date('h:i A', strtotime($att[$sn]['out'])) : '—' ?></td>
+                    <?php endfor; ?>
+                    <td style="padding:6px 8px;text-align:center;<?= ($att && ($att['_late'] ?? 0) > 0) ? 'color:#D97706;font-weight:600' : '' ?>">
+                        <?= $att && ($att['_late'] ?? 0) > 0 ? $att['_late'] . ' د' : '—' ?>
                     </td>
                 </tr>
             <?php endfor; ?>

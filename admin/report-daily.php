@@ -34,45 +34,98 @@ if ($filterShift > 0) {
 }
 
 // =========================================================
-// جلب الموظفين مع سجلات الحضور الخاصة بهم
+// جلب الموظفين
 // =========================================================
 $branchWhere = $filterBranch > 0 ? "AND e.branch_id = ?" : "";
-$params = array_merge([$date], $shiftTimeParams, [$date], $shiftTimeParams);
-if ($filterBranch > 0) { $params[] = $filterBranch; }
+$empParams = [];
+if ($filterBranch > 0) $empParams[] = $filterBranch;
 
-$sql = "
-    SELECT
-        e.id                  AS emp_id,
-        e.name                AS emp_name,
-        e.job_title,
-        b.name                AS branch_name,
-        ci.timestamp          AS check_in_ts,
-        ci.late_minutes       AS late_min,
-        co.timestamp          AS check_out_ts
+$empSql = "
+    SELECT e.id AS emp_id, e.name AS emp_name, e.job_title, e.branch_id, b.name AS branch_name
     FROM employees e
     LEFT JOIN branches b ON e.branch_id = b.id
-    LEFT JOIN (
-        SELECT employee_id, MIN(timestamp) AS timestamp, MIN(late_minutes) AS late_minutes
-        FROM attendances
-        WHERE type = 'in' AND attendance_date = ?
-        $shiftTimeCond
-        GROUP BY employee_id
-    ) ci ON ci.employee_id = e.id
-    LEFT JOIN (
-        SELECT employee_id, MAX(timestamp) AS timestamp
-        FROM attendances
-        WHERE type = 'out' AND attendance_date = ?
-        $shiftTimeCond
-        GROUP BY employee_id
-    ) co ON co.employee_id = e.id
-    WHERE e.is_active = 1 AND e.deleted_at IS NULL
-    $branchWhere
+    WHERE e.is_active = 1 AND e.deleted_at IS NULL $branchWhere
     ORDER BY b.name, e.name
 ";
+$empStmt = db()->prepare($empSql);
+$empStmt->execute($empParams);
+$employees = $empStmt->fetchAll();
 
-$stmt = db()->prepare($sql);
-$stmt->execute($params);
-$rows = $stmt->fetchAll();
+// =========================================================
+// جلب جميع سجلات الحضور لهذا اليوم
+// =========================================================
+$attSql = "SELECT employee_id, type, timestamp, late_minutes FROM attendances WHERE attendance_date = ? $shiftTimeCond ORDER BY timestamp ASC";
+$attStmt = db()->prepare($attSql);
+$attStmt->execute(array_merge([$date], $shiftTimeParams));
+$allAtt = $attStmt->fetchAll();
+
+$empAtt = [];
+foreach ($allAtt as $a) {
+    $empAtt[$a['employee_id']][] = $a;
+}
+
+// =========================================================
+// جلب ورديات الفروع وتوزيع السجلات على الورديات
+// =========================================================
+$allBranchShifts = [];
+$bsStmt = db()->query("SELECT branch_id, shift_number, shift_start, shift_end FROM branch_shifts WHERE is_active = 1 ORDER BY branch_id, shift_number");
+foreach ($bsStmt->fetchAll() as $s) {
+    $allBranchShifts[$s['branch_id']][] = $s;
+}
+
+$maxShifts = 1;
+foreach ($allBranchShifts as $bs) {
+    $maxShifts = max($maxShifts, count($bs));
+}
+
+$rows = [];
+foreach ($employees as $emp) {
+    $branchShifts = $allBranchShifts[$emp['branch_id']] ?? [
+        ['shift_number' => 1, 'shift_start' => getSystemSetting('work_start_time', '08:00'), 'shift_end' => getSystemSetting('work_end_time', '16:00')]
+    ];
+
+    $shiftData = [];
+    for ($sn = 1; $sn <= 3; $sn++) {
+        $shiftData[$sn] = ['in' => null, 'out' => null, 'late' => 0];
+    }
+
+    $records = $empAtt[$emp['emp_id']] ?? [];
+    foreach ($records as $rec) {
+        $shiftNum = assignTimeToShift(date('H:i', strtotime($rec['timestamp'])), $branchShifts);
+        if ($rec['type'] === 'in' && !$shiftData[$shiftNum]['in']) {
+            $shiftData[$shiftNum]['in'] = $rec['timestamp'];
+            $shiftData[$shiftNum]['late'] = (int)($rec['late_minutes'] ?? 0);
+        } elseif ($rec['type'] === 'out') {
+            $shiftData[$shiftNum]['out'] = $rec['timestamp'];
+        }
+    }
+
+    $firstIn = null;
+    $firstLate = 0;
+    $lastOut = null;
+    for ($sn = 1; $sn <= 3; $sn++) {
+        if ($shiftData[$sn]['in'] && (!$firstIn || $shiftData[$sn]['in'] < $firstIn)) {
+            $firstIn = $shiftData[$sn]['in'];
+            $firstLate = $shiftData[$sn]['late'];
+        }
+        if ($shiftData[$sn]['out'] && (!$lastOut || $shiftData[$sn]['out'] > $lastOut)) {
+            $lastOut = $shiftData[$sn]['out'];
+        }
+    }
+
+    $rows[] = [
+        'emp_id' => $emp['emp_id'],
+        'emp_name' => $emp['emp_name'],
+        'job_title' => $emp['job_title'],
+        'branch_name' => $emp['branch_name'],
+        'branch_id' => $emp['branch_id'],
+        'check_in_ts' => $firstIn,
+        'check_out_ts' => $lastOut,
+        'late_min' => $firstLate,
+        'shifts' => $shiftData,
+    ];
+}
+$colCount = 7 + 2 * $maxShifts;
 
 // =========================================================
 // احصائيات
@@ -177,7 +230,7 @@ $dateAr    = $dayOfWeek . '، ' . $dateObj->format('j') . ' / ' . $dateObj->form
 
   /* ===== الصفحة الرئيسية ===== */
   .page {
-    max-width: 960px;
+    max-width: 1200px;
     margin: 24px auto;
     background: #fff;
     border-radius: 2px;
@@ -477,7 +530,7 @@ $dateAr    = $dayOfWeek . '، ' . $dateObj->format('j') . ' / ' . $dateObj->form
 
   /* ===== طباعة ===== */
   @page {
-    size: A4;
+    size: A4 landscape;
     margin: 10mm 8mm;
   }
 </style>
@@ -569,8 +622,10 @@ $dateAr    = $dayOfWeek . '، ' . $dateObj->format('j') . ' / ' . $dateObj->form
         <th>اسم الموظف</th>
         <th>المسمى الوظيفي</th>
         <th>الفرع</th>
-        <th>وقت الحضور</th>
-        <th>وقت الانصراف</th>
+        <?php for ($sn = 1; $sn <= $maxShifts; $sn++): ?>
+        <th>حضور و<?= $sn ?></th>
+        <th>انصراف و<?= $sn ?></th>
+        <?php endfor; ?>
         <th>مدة العمل</th>
         <th>التأخير</th>
         <th>الحالة</th>
@@ -592,7 +647,7 @@ $dateAr    = $dayOfWeek . '، ' . $dateObj->format('j') . ' / ' . $dateObj->form
             $lastBranch = $r['branch_name'];
     ?>
     <tr class="branch-header">
-      <td colspan="9">فرع: <?= htmlspecialchars($r['branch_name'] ?? 'بدون فرع') ?></td>
+      <td colspan="<?= $colCount ?>">فرع: <?= htmlspecialchars($r['branch_name'] ?? 'بدون فرع') ?></td>
     </tr>
     <?php } ?>
 
@@ -601,44 +656,53 @@ $dateAr    = $dayOfWeek . '، ' . $dateObj->format('j') . ' / ' . $dateObj->form
       <td><strong><?= htmlspecialchars($r['emp_name']) ?></strong></td>
       <td style="color:#6b7280;font-size:.82rem"><?= htmlspecialchars($r['job_title'] ?? '') ?></td>
       <td style="color:#374151;font-size:.82rem"><?= htmlspecialchars($r['branch_name'] ?? '-') ?></td>
+      <?php for ($sn = 1; $sn <= $maxShifts; $sn++): ?>
       <td>
-        <?php if ($r['check_in_ts']): ?>
-          <span class="time-val"><?= date('h:i A', strtotime($r['check_in_ts'])) ?></span>
+        <?php if ($r['shifts'][$sn]['in']): ?>
+          <span class="time-val"><?= date('h:i A', strtotime($r['shifts'][$sn]['in'])) ?></span>
         <?php else: ?>
           <span class="time-absent">—</span>
         <?php endif; ?>
       </td>
       <td>
-        <?php if ($r['check_out_ts']): ?>
-          <span class="time-val" style="color:#7c3aed"><?= date('h:i A', strtotime($r['check_out_ts'])) ?></span>
-        <?php elseif (!$isAbsent): ?>
-          <span style="color:#f59e0b;font-size:.82rem">لم ينصرف</span>
+        <?php if ($r['shifts'][$sn]['out']): ?>
+          <span class="time-val" style="color:#7c3aed"><?= date('h:i A', strtotime($r['shifts'][$sn]['out'])) ?></span>
         <?php else: ?>
           <span class="time-absent">—</span>
         <?php endif; ?>
       </td>
+      <?php endfor; ?>
       <td>
-        <?php if ($r['check_in_ts'] && $r['check_out_ts']): ?>
-          <?php
-            $inTs  = strtotime($r['check_in_ts']);
-            $outTs = strtotime($r['check_out_ts']);
-            // إذا كان الانصراف في اليوم التالي (وردية تتجاوز منتصف الليل)
-            if ($outTs < $inTs) $outTs += 86400;
-            $diff  = $outTs - $inTs;
-            $hrs   = floor($diff / 3600);
-            $mins  = floor(($diff % 3600) / 60);
-          ?>
+        <?php
+          $totalWorkSec = 0;
+          for ($sn = 1; $sn <= 3; $sn++) {
+              if ($r['shifts'][$sn]['in'] && $r['shifts'][$sn]['out']) {
+                  $inTs = strtotime($r['shifts'][$sn]['in']);
+                  $outTs = strtotime($r['shifts'][$sn]['out']);
+                  if ($outTs < $inTs) $outTs += 86400;
+                  $totalWorkSec += ($outTs - $inTs);
+              }
+          }
+          if ($totalWorkSec > 0):
+              $hrs = floor($totalWorkSec / 3600);
+              $mins = floor(($totalWorkSec % 3600) / 60);
+        ?>
           <span class="duration-val"><?= $hrs ?>س <?= $mins ?>د</span>
         <?php else: ?>
           <span class="time-absent">—</span>
         <?php endif; ?>
       </td>
       <td>
-        <?php if ($isLate): ?>
+        <?php
+          $totalLateMin = 0;
+          for ($sn = 1; $sn <= 3; $sn++) {
+              $totalLateMin += (int)($r['shifts'][$sn]['late'] ?? 0);
+          }
+          if ($totalLateMin > 0): ?>
           <span style="color:#d97706;font-size:.82rem;font-weight:700">
-            <?= $lateMin >= 60
-              ? floor($lateMin/60).'س '.($lateMin%60).'د'
-              : $lateMin.'د' ?>
+            <?= $totalLateMin >= 60
+              ? floor($totalLateMin/60).'س '.($totalLateMin%60).'د'
+              : $totalLateMin.'د' ?>
           </span>
         <?php else: ?>
           <span class="time-absent">—</span>
@@ -656,7 +720,7 @@ $dateAr    = $dayOfWeek . '، ' . $dateObj->format('j') . ' / ' . $dateObj->form
     </tr>
     <?php endforeach; ?>
     <?php if (empty($rows)): ?>
-    <tr><td colspan="9" style="text-align:center;padding:32px;color:#9ca3af">لا يوجد موظفون</td></tr>
+    <tr><td colspan="<?= $colCount ?>" style="text-align:center;padding:32px;color:#9ca3af">لا يوجد موظفون</td></tr>
     <?php endif; ?>
     </tbody>
   </table>

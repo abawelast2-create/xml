@@ -257,16 +257,25 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     header('Content-Disposition: attachment; filename="attendance_' . $dateFrom . '_' . $dateTo . '.csv"');
     $out = fopen('php://output', 'w');
     fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM for Excel
-    fputcsv($out, ['#', 'الاسم', 'الوظيفة', 'الفرع', 'النوع', 'التاريخ', 'الوقت', 'خط العرض', 'خط الطول', 'الدقة (م)']);
-    $allStmt = db()->prepare("SELECT a.*, e.name AS employee_name, e.job_title, b.name AS branch_name FROM attendances a JOIN employees e ON a.employee_id=e.id LEFT JOIN branches b ON e.branch_id=b.id WHERE $whereStr ORDER BY a.timestamp DESC");
+    fputcsv($out, ['#', 'الاسم', 'الوظيفة', 'الفرع', 'الوردية', 'النوع', 'التاريخ', 'الوقت', 'خط العرض', 'خط الطول', 'الدقة (م)']);
+    $allStmt = db()->prepare("SELECT a.*, e.name AS employee_name, e.job_title, e.branch_id, b.name AS branch_name FROM attendances a JOIN employees e ON a.employee_id=e.id LEFT JOIN branches b ON e.branch_id=b.id WHERE $whereStr ORDER BY a.timestamp DESC");
     $allStmt->execute($params);
+    // جلب ورديات الفروع للتصدير
+    $csvBranchShifts = [];
+    $csvBsStmt = db()->query("SELECT branch_id, shift_number, shift_start, shift_end FROM branch_shifts WHERE is_active = 1 ORDER BY branch_id, shift_number");
+    foreach ($csvBsStmt->fetchAll() as $csvS) {
+        $csvBranchShifts[$csvS['branch_id']][] = $csvS;
+    }
     $i = 1;
     while ($row = $allStmt->fetch()) {
+        $csvShifts = $csvBranchShifts[$row['branch_id']] ?? [['shift_number' => 1, 'shift_start' => '08:00', 'shift_end' => '16:00']];
+        $csvShiftNum = assignTimeToShift(date('H:i', strtotime($row['timestamp'])), $csvShifts);
         fputcsv($out, [
             $i++,
             $row['employee_name'],
             $row['job_title'],
             $row['branch_name'] ?? '-',
+            'وردية ' . $csvShiftNum,
             $row['type'] === 'in' ? 'دخول' : 'انصراف',
             date('Y-m-d', strtotime($row['timestamp'])),
             date('H:i:s', strtotime($row['timestamp'])),
@@ -277,6 +286,19 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     }
     fclose($out);
     exit;
+}
+
+// جلب ورديات الفروع لتحديد الوردية لكل سجل
+$allBranchShiftsAtt = [];
+$bsStmtAtt = db()->query("SELECT branch_id, shift_number, shift_start, shift_end FROM branch_shifts WHERE is_active = 1 ORDER BY branch_id, shift_number");
+foreach ($bsStmtAtt->fetchAll() as $s) {
+    $allBranchShiftsAtt[$s['branch_id']][] = $s;
+}
+// بناء خريطة موظف => فرع
+$empBranchMapAtt = [];
+$ebStmt = db()->query("SELECT id, branch_id FROM employees WHERE is_active = 1 AND deleted_at IS NULL");
+foreach ($ebStmt->fetchAll() as $eb) {
+    $empBranchMapAtt[$eb['id']] = $eb['branch_id'];
 }
 
 require_once __DIR__ . '/../includes/admin_layout.php';
@@ -374,20 +396,26 @@ require __DIR__ . '/../includes/report_print_header.php';
     <div style="overflow-x:auto">
     <table class="att-table">
         <thead>
-            <tr><th>#</th><th>الموظف</th><th>الفرع</th><th>النوع</th><th>التاريخ</th><th>الوقت</th><th>التأخير</th><th>التبكير</th><th>الموقع</th><th>إجراءات</th></tr>
+            <tr><th>#</th><th>الموظف</th><th>الفرع</th><th>الوردية</th><th>النوع</th><th>التاريخ</th><th>الوقت</th><th>التأخير</th><th>التبكير</th><th>الموقع</th><th>إجراءات</th></tr>
         </thead>
         <tbody id="attendanceTableBody">
         <?php if (empty($records)): ?>
-            <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text3)">لا توجد سجلات في هذه الفترة</td></tr>
+            <tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text3)">لا توجد سجلات في هذه الفترة</td></tr>
         <?php else: ?>
             <?php foreach ($records as $i => $rec):
                 $isEarly = ($rec['type'] === 'in' && ($rec['early_minutes'] ?? 0) > 0);
                 $rowStyle = $isEarly ? 'background:rgba(5,150,105,.06)' : '';
+                $recBranchId = $empBranchMapAtt[$rec['employee_id']] ?? null;
+                $recBranchShifts = $allBranchShiftsAtt[$recBranchId] ?? [
+                    ['shift_number' => 1, 'shift_start' => getSystemSetting('work_start_time', '08:00'), 'shift_end' => getSystemSetting('work_end_time', '16:00')]
+                ];
+                $recShiftNum = assignTimeToShift(date('H:i', strtotime($rec['timestamp'])), $recBranchShifts);
             ?>
             <tr data-ts="<?= htmlspecialchars($rec['timestamp']) ?>" style="<?= $rowStyle ?>">
                 <td style="color:var(--text3)"><?= $offset + $i + 1 ?></td>
                 <td><strong><?= htmlspecialchars($rec['employee_name']) ?></strong><br><small style="color:var(--text3)"><?= htmlspecialchars($rec['job_title']) ?></small></td>
                 <td style="font-size:.78rem;color:var(--text2)"><?= htmlspecialchars($rec['branch_name'] ?? '-') ?></td>
+                <td style="font-size:.82rem;color:var(--primary);font-weight:600;text-align:center">و<?= $recShiftNum ?></td>
                 <td><span class="badge <?= $rec['type'] === 'in' ? 'badge-green' : 'badge-red' ?>"><?= $rec['type'] === 'in' ? '▶ دخول' : '◀ انصراف' ?></span></td>
                 <td style="color:var(--text2)"><?= date('Y-m-d', strtotime($rec['timestamp'])) ?></td>
                 <td style="color:var(--primary);font-weight:bold"><?= date('h:i:s A', strtotime($rec['timestamp'])) ?></td>

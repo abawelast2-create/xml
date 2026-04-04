@@ -365,6 +365,26 @@ function detectActiveShift(array $shifts): ?array {
 }
 
 /**
+ * تحديد رقم الوردية لوقت معين بناءً على ورديات الفرع
+ * يستخدم نفس نافذة buildShiftTimeFilter: بداية - 120 دقيقة إلى نهاية + 60 دقيقة
+ */
+function assignTimeToShift(string $time, array $shifts): int {
+    $timeMin = timeToMinutes($time);
+    foreach ($shifts as $s) {
+        $start = timeToMinutes($s['shift_start']);
+        $end   = timeToMinutes($s['shift_end']);
+        $windowStart = ($start - 120 + 1440) % 1440;
+        $windowEnd   = ($end + 60) % 1440;
+        if ($windowStart < $windowEnd) {
+            if ($timeMin >= $windowStart && $timeMin <= $windowEnd) return (int)$s['shift_number'];
+        } else {
+            if ($timeMin >= $windowStart || $timeMin <= $windowEnd) return (int)$s['shift_number'];
+        }
+    }
+    return 1;
+}
+
+/**
  * جلب مواعيد الفرع من جدول الورديات (branch_shifts)
  * يكتشف الوردية النشطة تلقائياً حسب الوقت
  */
