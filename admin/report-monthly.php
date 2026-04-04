@@ -64,7 +64,7 @@ $attStmt = db()->prepare("
     SELECT a.employee_id, a.attendance_date,
            MIN(CASE WHEN a.type='in' THEN a.timestamp END) AS first_in,
            MAX(CASE WHEN a.type='out' THEN a.timestamp END) AS last_out,
-           SUM(CASE WHEN a.type='in' THEN a.late_minutes ELSE 0 END) AS late_minutes
+           MIN(CASE WHEN a.type='in' THEN a.late_minutes END) AS late_minutes
     FROM attendances a
     WHERE a.attendance_date BETWEEN ? AND ?
     $shiftTimeCond

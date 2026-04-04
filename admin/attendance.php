@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
         $st = db()->prepare("DELETE FROM attendances WHERE id = ?");
         $st->execute([$delId]);
         auditLog('delete_attendance', "حذف سجل حضور ID={$delId}", $delId);
-        echo json_encode(['success' => true, 'deleted' => $st->rowCount()]);
+        echo json_encode(['success' => true, 'deleted' => $st->rowCount(), 'new_csrf' => $_SESSION['csrf_token'] ?? '']);
     } else {
         echo json_encode(['success' => false, 'message' => 'معرف غير صالح']);
     }
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
     $st = db()->prepare("UPDATE attendances SET type = ?, timestamp = ?, attendance_date = ?, late_minutes = ?, early_minutes = ?, notes = ? WHERE id = ?");
     $st->execute([$editType, $newTimestamp, $editDate, $editLate, $editEarly ?? 0, $editNotes ?: null, $editId]);
     auditLog('edit_attendance', "تعديل سجل حضور ID={$editId}: type={$editType}, time={$newTimestamp}, late={$editLate}", $editId);
-    echo json_encode(['success' => true, 'updated' => $st->rowCount()]);
+    echo json_encode(['success' => true, 'updated' => $st->rowCount(), 'new_csrf' => $_SESSION['csrf_token'] ?? '']);
     exit;
 }
 
@@ -163,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['manual_add'])) {
     db()->prepare("INSERT INTO attendances (employee_id, type, timestamp, attendance_date, late_minutes, early_minutes, latitude, longitude, notes, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)")
         ->execute([$manualEmpId, $manualType, $ts, $manualDate, $lateMin, $earlyMin, $manualNotes ?: 'إضافة يدوية', $_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_USER_AGENT'] ?? '']);
     auditLog('manual_attendance', "إضافة حضور يدوي: emp={$manualEmpId}, type={$manualType}, date={$manualDate}", $manualEmpId);
-    echo json_encode(['success' => true, 'message' => 'تم إضافة السجل بنجاح']);
+    echo json_encode(['success' => true, 'message' => 'تم إضافة السجل بنجاح', 'new_csrf' => $_SESSION['csrf_token'] ?? '']);
     exit;
 }
 
@@ -704,6 +704,8 @@ async function deleteRecord(id, btn) {
         const resp = await fetch('', { method: 'POST', body: fd, credentials: 'same-origin' });
         const data = await resp.json();
         if (data.success) {
+            // تحديث CSRF token
+            if (data.new_csrf) document.getElementById('csrfToken').value = data.new_csrf;
             const row = btn.closest('tr');
             row.style.transition = 'opacity .3s, transform .3s';
             row.style.opacity = '0';
@@ -771,6 +773,8 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
         const resp = await fetch('', { method: 'POST', body: fd, credentials: 'same-origin' });
         const data = await resp.json();
         if (data.success) {
+            // تحديث CSRF token
+            if (data.new_csrf) document.getElementById('csrfToken').value = data.new_csrf;
             closeEditModal();
             location.reload();
         } else {
@@ -829,6 +833,8 @@ document.getElementById('manualForm')?.addEventListener('submit', async function
         const resp = await fetch('', { method: 'POST', body: fd, credentials: 'same-origin' });
         const data = await resp.json();
         if (data.success) {
+            // تحديث CSRF token
+            if (data.new_csrf) document.getElementById('csrfToken').value = data.new_csrf;
             closeManualModal();
             location.reload();
         } else {

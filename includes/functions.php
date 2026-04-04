@@ -153,7 +153,7 @@ function recordAttendance(int $employeeId, string $type, float $lat, float $lon,
         $empStmt = db()->prepare("SELECT branch_id FROM employees WHERE id = ?");
         $empStmt->execute([$employeeId]);
         $emp = $empStmt->fetch();
-        $schedule = getBranchSchedule($emp['branch_id'] ?? null);
+        $schedule = getBranchSchedule($emp ? ($emp['branch_id'] ?? null) : null);
         $now = time();
 
         $referenceTimeStr = $schedule['work_start_time'];
@@ -252,10 +252,12 @@ function getClientIP(): string {
 }
 
 /**
- * تنظيف المدخلات لمنع XSS
+ * تنظيف المدخلات لمنع XSS (للتخزين في قاعدة البيانات)
+ * ملاحظة: لا نستخدم htmlspecialchars هنا لأن القوالب تستدعي htmlspecialchars عند العرض
+ * استخدام htmlspecialchars هنا وعند العرض يسبب double-encoding تراكمي
  */
 function sanitize(string $value): string {
-    return htmlspecialchars(strip_tags(trim($value)), ENT_QUOTES, 'UTF-8');
+    return strip_tags(trim($value));
 }
 
 /**
@@ -277,6 +279,8 @@ function verifyCsrfToken(string $token): bool {
     }
     // تدوير التوكن بعد كل تحقق ناجح (One-Time Token)
     unset($_SESSION['csrf_token']);
+    // إعادة إنشاء توكن جديد فوراً حتى لا يفشل AJAX التالي
+    generateCsrfToken();
     return true;
 }
 
@@ -396,12 +400,14 @@ function getBranchSchedule(?int $branchId = null): array {
         }
     }
 
-    // افتراضي
+    // افتراضي — استخدام إعدادات النظام بدلاً من قيم ثابتة
+    $fallbackStart = getSystemSetting('work_start_time', '08:00');
+    $fallbackEnd   = getSystemSetting('work_end_time',   '16:00');
     return [
-        'work_start_time'      => '12:00',
-        'work_end_time'        => '16:00',
+        'work_start_time'      => $fallbackStart,
+        'work_end_time'        => $fallbackEnd,
         'current_shift'        => 1,
-        'shifts'               => [['shift_number' => 1, 'shift_start' => '12:00', 'shift_end' => '16:00']],
+        'shifts'               => [['shift_number' => 1, 'shift_start' => $fallbackStart, 'shift_end' => $fallbackEnd]],
         'allow_overtime'       => true,
         'overtime_start_after' => 60,
         'overtime_min_duration'=> 30,

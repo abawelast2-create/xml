@@ -172,10 +172,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $st = db()->prepare("SELECT bypass_geofence, name FROM employees WHERE id=?");
                 $st->execute([$id]);
                 $r = $st->fetch();
-                $statusLabel = $r['bypass_geofence'] ? 'معفى' : 'غير معفى';
-                auditLog('toggle_geofence_bypass', "تبديل إعفاء الموقع للموظف {$r['name']}: {$statusLabel}", $id);
-                $message = "تم تحديث إعفاء الموقع: {$statusLabel}";
-                $msgType = 'success';
+                if ($r) {
+                    $statusLabel = $r['bypass_geofence'] ? 'معفى' : 'غير معفى';
+                    auditLog('toggle_geofence_bypass', "تبديل إعفاء الموقع للموظف {$r['name']}: {$statusLabel}", $id);
+                    $message = "تم تحديث إعفاء الموقع: {$statusLabel}";
+                    $msgType = 'success';
+                }
             }
         }
 

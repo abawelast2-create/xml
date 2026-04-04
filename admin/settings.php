@@ -50,10 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setSystemSetting('site_name',     sanitize($_POST['site_name'] ?? 'نظام الحضور'));
             setSystemSetting('company_name',  sanitize($_POST['company_name'] ?? ''));
             setSystemSetting('timezone',      sanitize($_POST['timezone'] ?? 'Asia/Riyadh'));
-            setSystemSetting('late_grace_minutes', sanitize($_POST['late_grace_minutes'] ?? '0'));
-            setSystemSetting('session_lifetime',   sanitize($_POST['session_lifetime'] ?? '120'));
             setSystemSetting('support_phone',      sanitize($_POST['support_phone'] ?? ''));
             $message = 'تم حفظ الإعدادات العامة'; $msgType = 'success';
+        }
+
+        if ($action === 'save_attendance') {
+            setSystemSetting('late_grace_minutes', sanitize($_POST['late_grace_minutes'] ?? '0'));
+            setSystemSetting('session_lifetime',   sanitize($_POST['session_lifetime'] ?? '120'));
+            $message = 'تم حفظ معايير الحضور'; $msgType = 'success';
         }
 
         if ($action === 'change_password') {
@@ -447,7 +451,7 @@ require_once __DIR__ . '/../includes/admin_layout.php';
         <div class="card-header"><span class="card-title"><span class="card-title-bar"></span> معايير احتساب التأخير والجلسة</span></div>
         <form method="POST">
             <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-            <input type="hidden" name="action" value="save_general">
+            <input type="hidden" name="action" value="save_attendance">
 
             <div class="scope-note">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#D97706"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
@@ -466,12 +470,6 @@ require_once __DIR__ . '/../includes/admin_layout.php';
                     <small style="color:var(--text3)">بعد هذه المدة بدون نشاط، يتم تسجيل خروج المدير تلقائياً. الافتراضي: 120 دقيقة.</small>
                 </div>
             </div>
-
-            <!-- إخفاء الحقول المخفية للإعدادات العامة الأخرى -->
-            <input type="hidden" name="site_name" value="<?= htmlspecialchars($siteName) ?>">
-            <input type="hidden" name="company_name" value="<?= htmlspecialchars($companyName) ?>">
-            <input type="hidden" name="timezone" value="<?= htmlspecialchars($timezone) ?>">
-            <input type="hidden" name="support_phone" value="<?= htmlspecialchars($supportPhone) ?>">
 
             <button type="submit" class="btn btn-primary">حفظ المعايير</button>
         </form>

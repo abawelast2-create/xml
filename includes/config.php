@@ -115,6 +115,8 @@ if (!empty($_SESSION['admin_id'])) {
         }
         if (session_status() === PHP_SESSION_NONE) session_start();
         $_SESSION['flash_error'] = 'انتهت جلستك بسبب عدم النشاط. يرجى تسجيل الدخول مجدداً.';
+        header('Location: ' . SITE_URL . '/admin/login.php');
+        exit;
     } else {
         $_SESSION['last_activity'] = time();
     }
