@@ -129,6 +129,7 @@ function isWithinGeofence(float $empLat, float $empLon, ?int $branchId = null): 
 
 /**
  * تسجيل حضور أو انصراف موظف
+ * يملأ shift_id تلقائياً + closed_by_checkin_id للانصراف
  */
 function recordAttendance(int $employeeId, string $type, float $lat, float $lon, float $accuracy = 0): array {
     // التحقق من صحة نوع التسجيل
@@ -146,16 +147,40 @@ function recordAttendance(int $employeeId, string $type, float $lat, float $lon,
     $ip        = getClientIP();
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
+    // جلب بيانات الفرع والورديات
+    $empStmt = db()->prepare("SELECT branch_id FROM employees WHERE id = ?");
+    $empStmt->execute([$employeeId]);
+    $emp = $empStmt->fetch();
+    $branchId = $emp ? ($emp['branch_id'] ?? null) : null;
+    $schedule = getBranchSchedule($branchId);
+    $shifts = $schedule['shifts'] ?? [];
+
+    // تحديد الوردية الحالية
+    $shiftId = null;
+    $nowTime = date('H:i');
+    if (!empty($shifts)) {
+        $shiftNum = assignTimeToShift($nowTime, $shifts);
+        foreach ($shifts as $s) {
+            if ((int)$s['shift_number'] === $shiftNum) {
+                // جلب ID من branch_shifts إذا متوفر
+                if (isset($s['id'])) {
+                    $shiftId = (int)$s['id'];
+                } elseif ($branchId) {
+                    $sidStmt = db()->prepare("SELECT id FROM branch_shifts WHERE branch_id = ? AND shift_number = ? AND is_active = 1 LIMIT 1");
+                    $sidStmt->execute([$branchId, $shiftNum]);
+                    $sidRow = $sidStmt->fetch();
+                    if ($sidRow) $shiftId = (int)$sidRow['id'];
+                }
+                break;
+            }
+        }
+    }
+
     // حساب دقائق التأخير والتبكير (عند تسجيل الدخول فقط)
     $lateMinutes = 0;
     $earlyMinutes = 0;
     if ($type === 'in') {
-        $empStmt = db()->prepare("SELECT branch_id FROM employees WHERE id = ?");
-        $empStmt->execute([$employeeId]);
-        $emp = $empStmt->fetch();
-        $schedule = getBranchSchedule($emp ? ($emp['branch_id'] ?? null) : null);
         $now = time();
-
         $referenceTimeStr = $schedule['work_start_time'];
 
         $workStart = strtotime(date('Y-m-d') . ' ' . $referenceTimeStr);
@@ -165,20 +190,31 @@ function recordAttendance(int $employeeId, string $type, float $lat, float $lon,
         }
         if ($now > $workStart) {
             $rawLate = max(0, (int)round(($now - $workStart) / 60));
-            // تطبيق فترة السماح (Grace Period)
             $graceMinutes = (int) getSystemSetting('late_grace_minutes', '0');
             $lateMinutes = max(0, $rawLate - $graceMinutes);
         } elseif ($now < $workStart) {
-            // حساب دقائق التبكير
             $earlyMinutes = max(0, (int)round(($workStart - $now) / 60));
         }
     }
 
+    // ربط الانصراف بتسجيل الحضور المقابل
+    $closedByCheckinId = null;
+    if ($type === 'out') {
+        $ciStmt = db()->prepare("
+            SELECT id FROM attendances
+            WHERE employee_id = ? AND type = 'in' AND attendance_date = CURDATE()
+            ORDER BY timestamp DESC LIMIT 1
+        ");
+        $ciStmt->execute([$employeeId]);
+        $ciRow = $ciStmt->fetch();
+        if ($ciRow) $closedByCheckinId = (int)$ciRow['id'];
+    }
+
     $stmt = db()->prepare("
-        INSERT INTO attendances (employee_id, type, timestamp, attendance_date, late_minutes, early_minutes, latitude, longitude, location_accuracy, ip_address, user_agent)
-        VALUES (?, ?, NOW(), CURDATE(), ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO attendances (employee_id, type, timestamp, attendance_date, late_minutes, early_minutes, latitude, longitude, location_accuracy, ip_address, user_agent, status, shift_id, closed_by_checkin_id)
+        VALUES (?, ?, NOW(), CURDATE(), ?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?)
     ");
-    $stmt->execute([$employeeId, $type, $lateMinutes, $earlyMinutes, $lat, $lon, $accuracy, $ip, $userAgent]);
+    $stmt->execute([$employeeId, $type, $lateMinutes, $earlyMinutes, $lat, $lon, $accuracy, $ip, $userAgent, $shiftId, $closedByCheckinId]);
 
     return ['success' => true, 'message' => $type === 'in' ? 'تم تسجيل الدخول بنجاح' : 'تم تسجيل الانصراف بنجاح', 'late_minutes' => $lateMinutes, 'early_minutes' => $earlyMinutes];
 }

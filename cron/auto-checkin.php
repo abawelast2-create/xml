@@ -119,11 +119,20 @@ try {
             if ($br) { $branchLat = $br['latitude']; $branchLon = $br['longitude']; }
         }
 
+        // جلب shift_id من branch_shifts
+        $autoShiftId = null;
+        if ($rule['branch_id']) {
+            $sidStmt = db()->prepare("SELECT id FROM branch_shifts WHERE branch_id = ? AND shift_number = ? AND is_active = 1 LIMIT 1");
+            $sidStmt->execute([$rule['branch_id'], $shiftNum]);
+            $sidRow = $sidStmt->fetch();
+            if ($sidRow) $autoShiftId = (int)$sidRow['id'];
+        }
+
         // تسجيل الحضور
         db()->prepare("
-            INSERT INTO attendances (employee_id, type, timestamp, attendance_date, late_minutes, early_minutes, latitude, longitude, location_accuracy, ip_address, user_agent, notes)
-            VALUES (?, 'in', ?, ?, ?, ?, ?, ?, 0, '127.0.0.1', 'auto-checkin-cron', ?)
-        ")->execute([$rule['emp_id'], $timestamp, $today, $lateMinutes, $earlyMinutes, $branchLat, $branchLon, "تسجيل تلقائي - وردية {$shiftNum}"]);
+            INSERT INTO attendances (employee_id, type, timestamp, attendance_date, late_minutes, early_minutes, latitude, longitude, location_accuracy, ip_address, user_agent, notes, status, shift_id)
+            VALUES (?, 'in', ?, ?, ?, ?, ?, ?, 0, '127.0.0.1', 'auto-checkin-cron', ?, 'manual', ?)
+        ")->execute([$rule['emp_id'], $timestamp, $today, $lateMinutes, $earlyMinutes, $branchLat, $branchLon, "تسجيل تلقائي - وردية {$shiftNum}", $autoShiftId]);
 
         $autoCheckins++;
         echo date('Y-m-d H:i:s') . " ✅ Auto check-in: {$rule['name']} (Shift {$shiftNum})\n";

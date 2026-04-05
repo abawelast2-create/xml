@@ -81,7 +81,6 @@ function isAdminLoggedIn(): bool {
 function triggerAutoCheckout(): void {
     $lockFile = sys_get_temp_dir() . '/sarh_auto_checkout.lock';
 
-    // تحقق من آخر تشغيل (مرة كل 60 ثانية كحد أدنى)
     if (file_exists($lockFile)) {
         $lastRun = (int) file_get_contents($lockFile);
         if (time() - $lastRun < 60) {
@@ -93,8 +92,8 @@ function triggerAutoCheckout(): void {
 
     try {
         $now = new DateTime();
+        $graceMinutes = (int) getSystemSetting('auto_checkout_grace_minutes', '15');
 
-        // جلب تسجيلات الحضور التي ليس لها انصراف بعدها (يدعم الورديات المتعددة)
         $stmt = db()->prepare("
             SELECT
                 ci.id AS checkin_id,
@@ -103,6 +102,7 @@ function triggerAutoCheckout(): void {
                 ci.attendance_date,
                 ci.latitude,
                 ci.longitude,
+                ci.shift_id AS existing_shift_id,
                 e.branch_id
             FROM attendances ci
             INNER JOIN employees e ON ci.employee_id = e.id
@@ -123,12 +123,12 @@ function triggerAutoCheckout(): void {
         $checkins = $stmt->fetchAll();
 
         foreach ($checkins as $ci) {
-            $shiftStmt = db()->prepare("SELECT shift_number, shift_start, shift_end FROM branch_shifts WHERE branch_id = ? AND is_active = 1 ORDER BY shift_number");
+            $shiftStmt = db()->prepare("SELECT id, shift_number, shift_start, shift_end FROM branch_shifts WHERE branch_id = ? AND is_active = 1 ORDER BY shift_number");
             $shiftStmt->execute([$ci['branch_id']]);
             $shifts = $shiftStmt->fetchAll();
 
             if (empty($shifts)) {
-                $shifts = [['shift_number' => 1, 'shift_start' => getSystemSetting('work_start_time', '08:00'), 'shift_end' => getSystemSetting('work_end_time', '16:00')]];
+                $shifts = [['id' => null, 'shift_number' => 1, 'shift_start' => getSystemSetting('work_start_time', '08:00'), 'shift_end' => getSystemSetting('work_end_time', '16:00')]];
             }
 
             $checkinTime = date('H:i', strtotime($ci['checkin_time']));
@@ -140,6 +140,8 @@ function triggerAutoCheckout(): void {
             }
             if (!$matchedShift) $matchedShift = $shifts[0];
 
+            $shiftId = $ci['existing_shift_id'] ?? ($matchedShift['id'] ?? null);
+
             $expectedCheckout = new DateTime($ci['attendance_date'] . ' ' . $matchedShift['shift_end']);
             $checkInDT = new DateTime($ci['checkin_time']);
 
@@ -147,17 +149,27 @@ function triggerAutoCheckout(): void {
                 $expectedCheckout->modify('+1 day');
             }
 
-            if ($now >= $expectedCheckout) {
+            $triggerTime = clone $expectedCheckout;
+            $triggerTime->modify("+{$graceMinutes} minutes");
+
+            if ($now >= $triggerTime) {
+                // Double-entry guard
+                $guardStmt = db()->prepare("SELECT id FROM attendances WHERE employee_id = ? AND type = 'out' AND attendance_date = ? AND timestamp > ? LIMIT 1");
+                $guardStmt->execute([$ci['employee_id'], $ci['attendance_date'], $ci['checkin_time']]);
+                if ($guardStmt->fetch()) continue;
+
                 $checkoutTimestamp = $expectedCheckout->format('Y-m-d H:i:s');
                 $insertStmt = db()->prepare("
                     INSERT INTO attendances (
                         employee_id, type, timestamp, attendance_date,
                         latitude, longitude, location_accuracy,
-                        ip_address, user_agent, notes
+                        ip_address, user_agent, notes,
+                        status, shift_id, closed_by_checkin_id
                     ) VALUES (
                         :emp_id, 'out', :ts, :att_date,
                         :lat, :lon, 0,
-                        'AUTO', 'AUTO-CHECKOUT', :notes
+                        'AUTO', 'AUTO-CHECKOUT', :notes,
+                        'auto_checkout', :shift_id, :ci_id
                     )
                 ");
                 $insertStmt->execute([
@@ -166,7 +178,9 @@ function triggerAutoCheckout(): void {
                     'att_date' => $ci['attendance_date'],
                     'lat'      => $ci['latitude'],
                     'lon'      => $ci['longitude'],
-                    'notes'    => "انصراف تلقائي - وردية {$shiftNum}"
+                    'notes'    => "انصراف تلقائي - وردية {$shiftNum}",
+                    'shift_id' => $shiftId,
+                    'ci_id'    => $ci['checkin_id']
                 ]);
             }
         }

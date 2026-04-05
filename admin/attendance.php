@@ -396,11 +396,11 @@ require __DIR__ . '/../includes/report_print_header.php';
     <div style="overflow-x:auto">
     <table class="att-table">
         <thead>
-            <tr><th>#</th><th>الموظف</th><th>الفرع</th><th>الوردية</th><th>النوع</th><th>التاريخ</th><th>الوقت</th><th>التأخير</th><th>التبكير</th><th>الموقع</th><th>إجراءات</th></tr>
+            <tr><th>#</th><th>الموظف</th><th>الفرع</th><th>الوردية</th><th>النوع</th><th>الحالة</th><th>التاريخ</th><th>الوقت</th><th>التأخير</th><th>التبكير</th><th>الموقع</th><th>إجراءات</th></tr>
         </thead>
         <tbody id="attendanceTableBody">
         <?php if (empty($records)): ?>
-            <tr><td colspan="11" style="text-align:center;padding:30px;color:var(--text3)">لا توجد سجلات في هذه الفترة</td></tr>
+            <tr><td colspan="12" style="text-align:center;padding:30px;color:var(--text3)">لا توجد سجلات في هذه الفترة</td></tr>
         <?php else: ?>
             <?php foreach ($records as $i => $rec):
                 $isEarly = ($rec['type'] === 'in' && ($rec['early_minutes'] ?? 0) > 0);
@@ -417,6 +417,17 @@ require __DIR__ . '/../includes/report_print_header.php';
                 <td style="font-size:.78rem;color:var(--text2)"><?= htmlspecialchars($rec['branch_name'] ?? '-') ?></td>
                 <td style="font-size:.82rem;color:var(--primary);font-weight:600;text-align:center">و<?= $recShiftNum ?></td>
                 <td><span class="badge <?= $rec['type'] === 'in' ? 'badge-green' : 'badge-red' ?>"><?= $rec['type'] === 'in' ? '▶ دخول' : '◀ انصراف' ?></span></td>
+                <td style="font-size:.78rem"><?php
+                    $st = $rec['status'] ?? 'manual';
+                    $stMap = ['manual' => ['يدوي','var(--text3)'], 'auto_checkout' => ['تلقائي','#F59E0B'], 'system_fixed' => ['مُصلَح','#6B7280'], 'overtime_approved' => ['إضافي ✓','#059669']];
+                    $stInfo = $stMap[$st] ?? ['يدوي','var(--text3)'];
+                    echo "<span style='color:{$stInfo[1]};font-weight:600'>{$stInfo[0]}</span>";
+                    if ($st === 'auto_checkout') {
+                        echo " <button class='btn btn-sm' style='font-size:.7rem;padding:1px 5px;background:#059669;color:#fff' onclick=\"approveOvertime({$rec['id']},this)\" title='اعتماد كعمل إضافي'>⏱️</button>";
+                    } elseif ($st === 'overtime_approved') {
+                        echo " <button class='btn btn-sm' style='font-size:.7rem;padding:1px 5px;background:#F59E0B;color:#fff' onclick=\"revertOvertime({$rec['id']},this)\" title='إلغاء الاعتماد'>↩️</button>";
+                    }
+                ?></td>
                 <td style="color:var(--text2)"><?= date('Y-m-d', strtotime($rec['timestamp'])) ?></td>
                 <td style="color:var(--primary);font-weight:bold"><?= date('h:i:s A', strtotime($rec['timestamp'])) ?></td>
                 <td style="color:<?= ($rec['late_minutes'] ?? 0) > 0 ? '#DC2626' : 'var(--text3)' ?>;font-size:.82rem"><?= ($rec['late_minutes'] ?? 0) > 0 ? $rec['late_minutes'] . ' د' : '-' ?></td>
@@ -726,6 +737,60 @@ async function fetchAttendanceStats() {
         console.warn('Real-time fetch failed:', e.message);
         setLiveStatus(failCount >= 3 ? 'error' : 'paused');
     }
+}
+
+// =================== اعتماد عمل إضافي ===================
+async function approveOvertime(id, btn) {
+    if (!confirm('هل تريد اعتماد هذا السجل كعمل إضافي؟')) return;
+    btn.disabled = true;
+    try {
+        const resp = await fetch('<?= rtrim(SITE_URL, '/') ?>/api/overtime-approve.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                attendance_id: id,
+                action: 'approve',
+                csrf_token: document.getElementById('csrfToken')?.value || ''
+            })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            if (data.new_csrf) document.getElementById('csrfToken').value = data.new_csrf;
+            // Update status cell
+            const td = btn.closest('td');
+            td.innerHTML = '<span style="color:#059669;font-weight:600">إضافي ✓</span> <button class="btn btn-sm" style="font-size:.7rem;padding:1px 5px;background:#F59E0B;color:#fff" onclick="revertOvertime(' + id + ',this)" title="إلغاء الاعتماد">↩️</button>';
+        } else {
+            alert(data.message || 'فشل');
+            btn.disabled = false;
+        }
+    } catch (e) { alert('خطأ: ' + e.message); btn.disabled = false; }
+}
+
+async function revertOvertime(id, btn) {
+    if (!confirm('هل تريد إلغاء اعتماد العمل الإضافي؟')) return;
+    btn.disabled = true;
+    try {
+        const resp = await fetch('<?= rtrim(SITE_URL, '/') ?>/api/overtime-approve.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                attendance_id: id,
+                action: 'revert',
+                csrf_token: document.getElementById('csrfToken')?.value || ''
+            })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            if (data.new_csrf) document.getElementById('csrfToken').value = data.new_csrf;
+            const td = btn.closest('td');
+            td.innerHTML = '<span style="color:#F59E0B;font-weight:600">تلقائي</span> <button class="btn btn-sm" style="font-size:.7rem;padding:1px 5px;background:#059669;color:#fff" onclick="approveOvertime(' + id + ',this)" title="اعتماد كعمل إضافي">⏱️</button>';
+        } else {
+            alert(data.message || 'فشل');
+            btn.disabled = false;
+        }
+    } catch (e) { alert('خطأ: ' + e.message); btn.disabled = false; }
 }
 
 // =================== حذف سجل ===================
